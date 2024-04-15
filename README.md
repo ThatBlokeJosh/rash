@@ -9,7 +9,7 @@ A bash 🐚 alternative with reasonable syntax, written in Rust.
   ~ ls
 ```
 # Types 📦
-- string (""/'')
+- string ("hello world" || 'hello world')
 - int
 - float
 - bool
