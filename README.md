@@ -20,3 +20,4 @@ A bash 🐚 alternative with reasonable syntax, written in Rust.
 - [x] Add variables
 - [ ] Probably should do an AST
 - [ ] More programming fundamentals
+- [ ] LSP???
