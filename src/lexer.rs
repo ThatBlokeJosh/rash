@@ -38,6 +38,7 @@ pub enum TokenType {
     PlusPlus,
     MinusMinus,
     Comment,
+    Newline,
 }
 
 #[derive(Debug, Clone)]
@@ -58,8 +59,8 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         (TokenType::Number, Regex::new(r"^[-]?\d[\d| |]*").unwrap()),
         (TokenType::String, Regex::new(r"^'[^']*'").unwrap()),
         (TokenType::String, Regex::new(r#"^"[^"]*""#).unwrap()),
-        (TokenType::Bool, Regex::new(r"true").unwrap()),
-        (TokenType::Bool, Regex::new(r"false").unwrap()),
+        (TokenType::Bool, Regex::new(r"^true[ ]*").unwrap()),
+        (TokenType::Bool, Regex::new(r"^false[ ]*").unwrap()),
         (TokenType::PlusPlus, Regex::new(r"^[+][+][ ]*").unwrap()),
         (TokenType::Plus, Regex::new(r"^[+][ ]*").unwrap()),
         (TokenType::MinusMinus, Regex::new(r"^[-][-][ ]*").unwrap()),
