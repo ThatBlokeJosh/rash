@@ -1,7 +1,12 @@
 mod lexer;
+mod parser;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
+
+use lexer::Token;
+
+use crate::parser::parse;
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -15,10 +20,18 @@ fn main() -> std::io::Result<()> {
     let mut script = String::new();
     file.read_to_string(&mut script)?;
 
+    let mut tokens: Vec<Token> = Vec::new();
+
     for line in script.lines() {
-        let token = lexer::tokenize(line);
-        println!("{:?}", token);
+        let line_tokens = lexer::tokenize(line);
+        for token in line_tokens {
+            tokens.push(token)
+        }
     }
+
+    println!("{:?}", tokens);
+
+    parse(tokens);
 
     return Ok(());
 }
