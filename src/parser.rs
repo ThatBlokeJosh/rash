@@ -53,30 +53,43 @@ pub enum Literal {
     Nil,
 }
 
-pub fn parse(tokens: Vec<Token>) -> Expr {
-    let expr: Expr = Expr::Literal(Literal::Nil);
-    for i in 0..tokens.len() {
+pub fn parse(tokens: Vec<Token>) -> Vec<Box<Expr>> {
+    let mut tree: Vec<Box<Expr>> = Vec::new();
+    let mut i:usize = 0;
+    while i < tokens.len() { 
         let value = &tokens[i].value;
         match tokens[i].kind {
             TokenType::Name => {
                 match tokens[i+1].kind {
                     TokenType::Equals => {
-                        let exp = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                        let j: usize;
+                        let expr: Expr;
+                        (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                        tree.push(Box::new(expr));
+                        i += j;
                     }
                     TokenType::EqualTo => {
-                        let exp = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                        let j: usize;
+                        let expr: Expr;
+                        (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                        tree.push(Box::new(expr));
+                        i += j;
                     }
                     _ => {}
                 }
             }
             TokenType::If | TokenType::ElseIf | TokenType::Else => {
-                let exp = parse_if(tokens[i..].to_vec());
-                println!("{:?}", exp)
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_if(tokens[i..].to_vec());
+                tree.push(Box::new(expr));
+                i += j;
             }
             _ => {}
         }
+        i += 1
     }
-    return expr;
+    return tree;
 }
 
 pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
@@ -181,7 +194,7 @@ pub fn parse_if(tokens: Vec<Token>) -> (Expr, usize) {
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::ClosingBracket => {
+            TokenType::ClosingBrace => {
                 break;
             }
             TokenType::Name => {
