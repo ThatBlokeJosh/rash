@@ -1,5 +1,2 @@
-for true {
-	if x == 5; {
-		y = y + 1;
-	}
+for i = 5; i == 5; ++i; {
 }

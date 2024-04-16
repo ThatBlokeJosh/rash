@@ -2,7 +2,7 @@ use crate::lexer::{Token, TokenType};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    Unary(Operator, Box<Expr>),
+    Unary(UnaryExpr),
     Binary(BinaryExpr),
     Block(Block),
     Literal(Literal),
@@ -24,6 +24,13 @@ pub enum Operator {
 pub struct BinaryExpr {
     operator: Operator,
     left: Box<Expr>, right: Box<Expr>,
+}
+
+
+#[derive(Debug, Clone)]
+pub struct UnaryExpr {
+    operator: Operator,
+    value: Box<Expr>,
 }
 
 
@@ -187,6 +194,33 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
     return (Expr::Binary(bin), i);
 }
 
+pub fn parse_un(tokens: Vec<Token>) -> (Expr, usize) {
+    let mut operator: Operator = Operator::Nil;
+    match tokens[0].kind {
+        TokenType::PlusPlus=>{operator = Operator::Plus},
+        TokenType::MinusMinus=>{operator = Operator::Minus},
+        _ => {}, 
+    }
+    let mut un = UnaryExpr{operator, value: Box::new(Expr::Nil)};
+    let mut i:usize = 1;
+    while i < tokens.len() { 
+        let value = (&tokens[i].value).to_string();
+        match tokens[i].kind {
+            TokenType::Semicolon => {
+                break;
+            }
+            TokenType::Name => {
+                un.value = Box::new(Expr::Literal(Literal::Variable(value)));
+            }
+            _ => {
+
+            }
+        }
+        i += 1;
+    }
+    return (Expr::Unary(un), i);
+}
+
 
 pub fn parse_block(tokens: Vec<Token>) -> (Expr, usize) {
     let mut block_kind: BlockType = BlockType::Nil;
@@ -256,6 +290,18 @@ pub fn parse_block(tokens: Vec<Token>) -> (Expr, usize) {
             }
             TokenType::Bool => {
                 let expr = Expr::Literal(Literal::Bool(value));
+                if open {
+                    block.block.push(Box::new(expr));
+                } else {
+                    block.conditions.push(Box::new(expr));
+                }
+            }
+
+            TokenType::PlusPlus => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_un(tokens[i..].to_vec());
+                i += j;
                 if open {
                     block.block.push(Box::new(expr));
                 } else {
