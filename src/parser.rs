@@ -4,7 +4,7 @@ use crate::lexer::{Token, TokenType};
 pub enum Expr {
     Unary(Operator, Box<Expr>),
     Binary(BinaryExpr),
-    Grouping(Box<Expr>),
+    Block(Block),
     Literal(Literal),
     Nil,
 }
@@ -12,6 +12,7 @@ pub enum Expr {
 #[derive(Debug, Clone)]
 pub enum Operator {
     Equals,
+    EqualTo,
     Plus,
     Minus,
     Times,
@@ -23,6 +24,23 @@ pub enum Operator {
 pub struct BinaryExpr {
     operator: Operator,
     left: Box<Expr>, right: Box<Expr>,
+}
+
+
+#[derive(Debug, Clone)]
+pub enum BlockType {
+    If,
+    Else,
+    ElseIf,
+    For,
+    While,
+    Nil,
+}
+
+#[derive(Debug, Clone)]
+pub struct Block {
+    kind: BlockType,
+    block: Vec<Box<Expr>>,
 }
 
 #[derive(Debug, Clone)]
@@ -43,11 +61,17 @@ pub fn parse(tokens: Vec<Token>) -> Expr {
             TokenType::Name => {
                 match tokens[i+1].kind {
                     TokenType::Equals => {
-                        let exp = asign_variable(tokens[i+1..].to_vec(), value.to_string());
-                        println!("{:?}", exp)
+                        let exp = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                    }
+                    TokenType::EqualTo => {
+                        let exp = parse_variable(tokens[i+1..].to_vec(), value.to_string());
                     }
                     _ => {}
                 }
+            }
+            TokenType::If | TokenType::ElseIf | TokenType::Else => {
+                let exp = parse_if(tokens[i..].to_vec());
+                println!("{:?}", exp)
             }
             _ => {}
         }
@@ -55,7 +79,13 @@ pub fn parse(tokens: Vec<Token>) -> Expr {
     return expr;
 }
 
-pub fn asign_variable(tokens: Vec<Token>, name: String) -> Expr {
+pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
+    let mut operator: Operator = Operator::Nil;
+    match tokens[0].kind {
+        TokenType::EqualTo=>{operator = Operator::EqualTo},
+        TokenType::Equals=>{operator = Operator::Equals},
+        _ => {}, 
+    }
     let mut expr: Expr = Expr::Nil; 
     let mut i:usize = 0;
     while i < tokens.len() { 
@@ -86,8 +116,8 @@ pub fn asign_variable(tokens: Vec<Token>, name: String) -> Expr {
     }
     let left = Box::new(Expr::Literal(Literal::Variable(name))); 
     let right = Box::new(expr);
-    let bin_expr: BinaryExpr = BinaryExpr{operator: Operator::Equals, left, right};
-    return Expr::Binary(bin_expr);
+    let bin_expr: BinaryExpr = BinaryExpr{operator, left, right};
+    return (Expr::Binary(bin_expr), i);
 }
 
 pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
@@ -113,6 +143,9 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
             TokenType::Number => {
                 bin.right = Box::new(Expr::Literal(Literal::Int(value)));
             }
+            TokenType::Bool => {
+                bin.right = Box::new(Expr::Literal(Literal::Bool(value)));
+            }
             TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide => {
                 let j: usize;
                 let expr: Expr;
@@ -132,4 +165,68 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
         i += 1;
     }
     return (Expr::Binary(bin), i);
+}
+
+
+pub fn parse_if(tokens: Vec<Token>) -> (Expr, usize) {
+    let mut block_kind: BlockType = BlockType::Nil;
+    match tokens[0].kind {
+        TokenType::If=>{block_kind = BlockType::If},
+        TokenType::Else=>{block_kind = BlockType::Else},
+        TokenType::ElseIf=>{block_kind = BlockType::ElseIf},
+        _ => {}, 
+    }
+    let mut block: Block = Block{kind: block_kind, block: Vec::new()};
+    let mut i:usize = 1;
+    while i < tokens.len() { 
+        let value = (&tokens[i].value).to_string();
+        match tokens[i].kind {
+            TokenType::ClosingBracket => {
+                break;
+            }
+            TokenType::Name => {
+                match tokens[i+1].kind {
+                    TokenType::Equals => {
+                        let j: usize;
+                        let expr: Expr;
+                        (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                        block.block.push(Box::new(expr));
+                        i += j;
+                    }
+
+                    TokenType::EqualTo => {
+                        let j: usize;
+                        let expr: Expr;
+                        (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                        block.block.push(Box::new(expr));
+                        i += j;
+                    }
+                    _ => {}
+                }
+            }
+            TokenType::String => {
+                let expr = Box::new(Expr::Literal(Literal::String(value)));
+                block.block.push(expr)
+            }
+            TokenType::Number => {
+                let expr = Box::new(Expr::Literal(Literal::Int(value)));
+                block.block.push(expr)
+            }
+            TokenType::Bool => {
+                let expr = Box::new(Expr::Literal(Literal::Bool(value)));
+                block.block.push(expr)
+            }
+            // TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide => {
+            //     let j: usize;
+            //     let expr: Expr;
+            //     (expr, j) = parse_bin(tokens[i..].to_vec(), Expr::Binary(bin.clone()));
+            //     i += j;
+            // }
+            _ => {
+
+            }
+        }
+        i += 1;
+    }
+    return (Expr::Block(block), i);
 }
