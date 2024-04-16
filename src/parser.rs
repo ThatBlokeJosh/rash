@@ -9,6 +9,28 @@ pub enum Expr {
     Nil,
 }
 
+
+#[derive(Debug, Clone)]
+pub struct DataType {
+    pub value: String,
+    pub kind: Literal,
+}
+
+impl Expr {
+    pub fn unwrap(self) -> Option<DataType> {
+        match self {
+            Expr::Literal(expr) => {
+                let kind = expr.clone();
+                match expr {
+                    Literal::Variable(x) | Literal::Int(x) | Literal::String(x) | Literal::Bool(x) | Literal::Float(x) => {return Some(DataType{value: x, kind});} 
+                    _ => {return None;}
+                }
+            },
+            _ => {return None;}
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Operator {
     Equals,
@@ -22,8 +44,9 @@ pub enum Operator {
 
 #[derive(Debug, Clone)]
 pub struct BinaryExpr {
-    operator: Operator,
-    left: Box<Expr>, right: Box<Expr>,
+    pub operator: Operator,
+    pub left: Box<Expr>,
+    pub right: Box<Expr>,
 }
 
 
@@ -130,7 +153,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
             TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide => {
                 let j: usize;
                 (expr, j) = parse_bin(tokens[i..].to_vec(), expr.clone());
-                i += j;
+                i += j-1;
             }
             _ => {
 
@@ -234,7 +257,6 @@ pub fn parse_block(tokens: Vec<Token>) -> (Expr, usize) {
     let mut block: Block = Block{kind: block_kind, block: Vec::new(), conditions: Vec::new()};
     let mut i:usize = 1;
     let mut open = false;
-    println!("{:?}", open);
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
