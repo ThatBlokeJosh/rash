@@ -40,6 +40,7 @@ pub enum BlockType {
 #[derive(Debug, Clone)]
 pub struct Block {
     kind: BlockType,
+    conditions: Vec<Box<Expr>>,
     block: Vec<Box<Expr>>,
 }
 
@@ -78,10 +79,10 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Box<Expr>> {
                     _ => {}
                 }
             }
-            TokenType::If | TokenType::ElseIf | TokenType::Else => {
+            TokenType::If | TokenType::ElseIf | TokenType::Else | TokenType::For => {
                 let j: usize;
                 let expr: Expr;
-                (expr, j) = parse_if(tokens[i..].to_vec());
+                (expr, j) = parse_block(tokens[i..].to_vec());
                 tree.push(Box::new(expr));
                 i += j;
             }
@@ -106,6 +107,9 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
         match tokens[i].kind {
             TokenType::Semicolon => {
                 break;
+            }
+            TokenType::Name => {
+                expr = Expr::Literal(Literal::Variable(value));
             }
             TokenType::String => {
                 expr = Expr::Literal(Literal::String(value));
@@ -150,6 +154,9 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
             TokenType::Semicolon => {
                 break;
             }
+            TokenType::Name => {
+                bin.right = Box::new(Expr::Literal(Literal::Variable(value)));
+            }
             TokenType::String => {
                 bin.right = Box::new(Expr::Literal(Literal::String(value)));
             }
@@ -181,19 +188,25 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
 }
 
 
-pub fn parse_if(tokens: Vec<Token>) -> (Expr, usize) {
+pub fn parse_block(tokens: Vec<Token>) -> (Expr, usize) {
     let mut block_kind: BlockType = BlockType::Nil;
     match tokens[0].kind {
         TokenType::If=>{block_kind = BlockType::If},
         TokenType::Else=>{block_kind = BlockType::Else},
         TokenType::ElseIf=>{block_kind = BlockType::ElseIf},
+        TokenType::For=>{block_kind = BlockType::For},
         _ => {}, 
     }
-    let mut block: Block = Block{kind: block_kind, block: Vec::new()};
+    let mut block: Block = Block{kind: block_kind, block: Vec::new(), conditions: Vec::new()};
     let mut i:usize = 1;
+    let mut open = false;
+    println!("{:?}", open);
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
+            TokenType::OpeningBrace => {
+                open = true
+            }
             TokenType::ClosingBrace => {
                 break;
             }
@@ -203,7 +216,11 @@ pub fn parse_if(tokens: Vec<Token>) -> (Expr, usize) {
                         let j: usize;
                         let expr: Expr;
                         (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
-                        block.block.push(Box::new(expr));
+                        if open {
+                            block.block.push(Box::new(expr));
+                        } else {
+                            block.conditions.push(Box::new(expr));
+                        }
                         i += j;
                     }
 
@@ -211,23 +228,51 @@ pub fn parse_if(tokens: Vec<Token>) -> (Expr, usize) {
                         let j: usize;
                         let expr: Expr;
                         (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
-                        block.block.push(Box::new(expr));
+                        if open {
+                            block.block.push(Box::new(expr));
+                        } else {
+                            block.conditions.push(Box::new(expr));
+                        }
                         i += j;
                     }
                     _ => {}
                 }
             }
             TokenType::String => {
-                let expr = Box::new(Expr::Literal(Literal::String(value)));
-                block.block.push(expr)
+                let expr = Expr::Literal(Literal::String(value));
+                if open {
+                    block.block.push(Box::new(expr));
+                } else {
+                    block.conditions.push(Box::new(expr));
+                }
             }
             TokenType::Number => {
-                let expr = Box::new(Expr::Literal(Literal::Int(value)));
-                block.block.push(expr)
+                let expr = Expr::Literal(Literal::Int(value));
+                if open {
+                    block.block.push(Box::new(expr));
+                } else {
+                    block.conditions.push(Box::new(expr));
+                }
             }
             TokenType::Bool => {
-                let expr = Box::new(Expr::Literal(Literal::Bool(value)));
-                block.block.push(expr)
+                let expr = Expr::Literal(Literal::Bool(value));
+                if open {
+                    block.block.push(Box::new(expr));
+                } else {
+                    block.conditions.push(Box::new(expr));
+                }
+            }
+
+            TokenType::If | TokenType::ElseIf | TokenType::Else | TokenType::For => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_block(tokens[i..].to_vec());
+                if open {
+                    block.block.push(Box::new(expr));
+                } else {
+                    block.conditions.push(Box::new(expr));
+                }
+                i += j;
             }
             // TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide => {
             //     let j: usize;
