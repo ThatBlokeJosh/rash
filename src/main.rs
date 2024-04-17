@@ -1,11 +1,13 @@
 mod lexer;
 mod parser;
 mod interpreter;
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 
 use lexer::Token;
+use parser::DataType;
 
 use crate::interpreter::interpret;
 use crate::parser::parse;
@@ -36,7 +38,8 @@ fn main() -> std::io::Result<()> {
     let tree = parse(tokens);
     // println!("Tree: {:?} Length: {:?}", tree, tree.len());
 
-    interpret(tree);
+    let mut scopes: Vec<HashMap<String, DataType>> = Vec::new();
+    interpret(tree, &mut scopes);
 
     return Ok(());
 }
