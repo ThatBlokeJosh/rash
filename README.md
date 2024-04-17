@@ -3,7 +3,7 @@
 A bash 🐚 alternative with reasonable syntax, written in Rust.
 
 # Basic syntax 📜
-```rash
+```go
   for i = 0; i < 10; ++i; {
       if i == 7; {
         print("Lucky number!");
