@@ -1,6 +1,6 @@
 use std::{collections::HashMap, i32};
 
-use crate::parser::{BinaryExpr, Block, BlockType, DataType, Expr, Literal, Operator, UnaryExpr};
+use crate::parser::{BinaryExpr, Block, BlockType, DataType, Expr, Function, FunctionType, Literal, Operator, UnaryExpr};
 
 pub fn interpret(tree: Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>) {
     let mut scope: HashMap<String, DataType> = HashMap::new();
@@ -45,18 +45,35 @@ pub fn interpret(tree: Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType
                     _ => {} 
                 }
             }
+            Expr::Function(expr) => {
+                match expr.kind {
+                    FunctionType::Print => {
+                        run_print(expr.clone(), scopes)
+                    }
+                    _ => {} 
+                }
+            }
             _ => {},
         }
     }
     scopes.pop();
-    println!("{:?}", scope)
+    // println!("{:?}", scope)
 }
 
 pub fn calculate_bexpr(ref in_expr: Expr, scopes: &mut Vec<HashMap<String, DataType>>) -> Option<DataType> {
     let expr: BinaryExpr;
     match in_expr {
         Expr::Binary(x) => {expr = x.clone();}
-        Expr::Literal(..) => { return in_expr.clone().unwrap();}
+        Expr::Literal(lit) => { 
+            match lit {
+                Literal::Variable(x) => {
+                    return get_from_scope(scopes, x.to_string());
+                }
+                _ => {
+                    return in_expr.clone().unwrap();
+                }
+            }
+        }
         _ => {return None;}
     }
     let left = calculate_bexpr(*expr.left, scopes);
@@ -98,7 +115,16 @@ pub fn calculate_unexpr(ref in_expr: Expr, scopes: &mut Vec<HashMap<String, Data
     }
     let mut value: DataType = DataType::new();
     match *expr.value {
-        Expr::Literal(..) => { value = expr.value.clone().unwrap()?;}
+        Expr::Literal(lit) => { 
+            match lit {
+                Literal::Variable(x) => {
+                    value = get_from_scope(scopes, x.to_string())?;
+                }
+                _ => {
+                    value = Expr::Literal(lit).unwrap()?;
+                }
+            }
+        }
         _ => {}
     }
     let one: DataType = DataType{value: "1".to_string(), kind: Literal::Int("1".to_string())};
@@ -163,7 +189,6 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) -> Res
                     let output = calculate_bexpr(*name_expr.right, scopes);
                     scope.insert(iterator_key.clone(), output.unwrap());
                     scopes.push(scope.clone());
-                    println!("{:?}", scopes);
                 }
                 _ => {}
             }
@@ -196,6 +221,14 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) -> Res
     return Ok(());
 }
 
+pub fn run_print(ref expr: Function, scopes: &mut Vec<HashMap<String, DataType>>) {
+    for arg in &expr.arguments {
+        let output = calculate_bexpr(*arg.clone(), scopes); 
+        print!("{} ", output.unwrap().value)
+    }
+    println!()
+}
+
 pub fn get_from_scope(scopes: &mut Vec<HashMap<String, DataType>>, name: String) -> Option<DataType> {
     for scope in scopes {
         match scope.get(name.as_str()) {
@@ -215,16 +248,16 @@ pub fn add(left: DataType, right: DataType, scopes: &mut Vec<HashMap<String, Dat
             let z:String = (x + y).to_string();
             return Some(DataType{value: z.clone(), kind: Literal::Int(z.clone())});
         }
-        (Literal::Variable(x_str), Literal::Variable(y_str)) => {
-            let (x, y): (i32, i32) = (get_from_scope(scopes, x_str.clone()).unwrap().value.parse().unwrap(), get_from_scope(scopes, y_str.clone()).unwrap().value.parse().unwrap());
-            let z:String = (x + y).to_string();
-            return Some(DataType{value: z.clone(), kind: Literal::Int(z.clone())});
-        }
-        (Literal::Variable(x_str), Literal::Int(y_str)) => {
-            let (x, y): (i32, i32) = (get_from_scope(scopes, x_str.clone()).unwrap().value.parse().unwrap(), y_str.parse().unwrap());
-            let z:String = (x + y).to_string();
-            return Some(DataType{value: z.clone(), kind: Literal::Int(z.clone())});
-        }
+        // (Literal::Variable(x_str), Literal::Variable(y_str)) => {
+        //     let (x, y): (i32, i32) = (get_from_scope(scopes, x_str.clone()).unwrap().value.parse().unwrap(), get_from_scope(scopes, y_str.clone()).unwrap().value.parse().unwrap());
+        //     let z:String = (x + y).to_string();
+        //     return Some(DataType{value: z.clone(), kind: Literal::Int(z.clone())});
+        // }
+        // (Literal::Variable(x_str), Literal::Int(y_str)) => {
+        //     let (x, y): (i32, i32) = (get_from_scope(scopes, x_str.clone()).unwrap().value.parse().unwrap(), y_str.parse().unwrap());
+        //     let z:String = (x + y).to_string();
+        //     return Some(DataType{value: z.clone(), kind: Literal::Int(z.clone())});
+        // }
         _ => {return None;}
     }
 }

@@ -39,6 +39,7 @@ pub enum TokenType {
     MinusMinus,
     Comment,
     Newline,
+    Comma,
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +53,7 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         (TokenType::Comment, Regex::new(r"^[/][/][ ]*").unwrap()),
         (TokenType::Newline, Regex::new(r"^[\n][ ]*").unwrap()),
         (TokenType::Print, Regex::new(r"^print[ ]*").unwrap()),
+        (TokenType::Comma, Regex::new(r"^[,][ ]*").unwrap()),
         (TokenType::Tilda, Regex::new(r"^~[ ]*").unwrap()),
         (TokenType::For, Regex::new(r"^for[ ]*").unwrap()),
         (TokenType::If, Regex::new(r"^if[ ]*").unwrap()),
