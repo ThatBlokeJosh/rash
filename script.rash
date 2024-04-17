@@ -1,3 +1,5 @@
 for i = 0; i < 10; ++i; {
-	print(i + 1)
+    if i == 7; {
+	print("Lucky number!");
+    }
 }

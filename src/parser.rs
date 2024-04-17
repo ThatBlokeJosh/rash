@@ -74,7 +74,6 @@ pub enum BlockType {
     Else,
     ElseIf,
     For,
-    While,
     Nil,
 }
 
@@ -220,7 +219,6 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
 
 pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
     let mut operator: Operator = Operator::Nil;
-    println!("{:?}", tokens);
     match tokens[0].kind {
         TokenType::Plus=>{operator = Operator::Plus},
         TokenType::Minus=>{operator = Operator::Minus},
@@ -388,23 +386,13 @@ pub fn parse_block(tokens: Vec<Token>) -> (Expr, usize) {
                 i += j;
             }
 
-            // TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide | TokenType::EqualTo | TokenType::LesserThan => {
-            //     let j: usize;
-            //     let expr: Expr;
-            //     (expr, j) = parse_bin(tokens[i..].to_vec());
-            //     if open {
-            //         block.block.push(Box::new(expr));
-            //     } else {
-            //         block.conditions.push(Box::new(expr));
-            //     }
-            //     i += j;
-            // }
-            // TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide => {
-            //     let j: usize;
-            //     let expr: Expr;
-            //     (expr, j) = parse_bin(tokens[i..].to_vec(), Expr::Binary(bin.clone()));
-            //     i += j;
-            // }
+            TokenType::If | TokenType::ElseIf | TokenType::Else | TokenType::For => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_block(tokens[i..].to_vec());
+                block.block.push(Box::new(expr));
+                i += j;
+            }
             _ => {
 
             }

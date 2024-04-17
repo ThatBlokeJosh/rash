@@ -4,9 +4,11 @@ A bash 🐚 alternative with reasonable syntax, written in Rust.
 
 # Basic syntax 📜
 ```rash
-  var x = 5
-  print("hello world")
-  ~ ls
+  for i = 0; i < 10; ++i; {
+      if i == 7; {
+        print("Lucky number!");
+      }
+  }
 ```
 # Types 📦
 - string ("hello world" || 'hello world')
@@ -16,8 +18,7 @@ A bash 🐚 alternative with reasonable syntax, written in Rust.
 
 # TODO ✅
 - [x] Add types
-- [x] Add shell interaction
 - [x] Add variables
-- [ ] Probably should do an AST
+- [x] Add loops, conditions and basic functions
 - [ ] More programming fundamentals
 - [ ] LSP???
