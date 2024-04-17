@@ -16,6 +16,12 @@ pub struct DataType {
     pub kind: Literal,
 }
 
+impl DataType {
+    pub fn new() -> Self {
+        return DataType{kind: Literal::Nil, value: "".to_string()};
+    }
+}
+
 impl Expr {
     pub fn unwrap(self) -> Option<DataType> {
         match self {
@@ -52,8 +58,8 @@ pub struct BinaryExpr {
 
 #[derive(Debug, Clone)]
 pub struct UnaryExpr {
-    operator: Operator,
-    value: Box<Expr>,
+    pub operator: Operator,
+    pub value: Box<Expr>,
 }
 
 
