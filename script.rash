@@ -1,4 +1,4 @@
-x = 5;
+x = 5; // Hello world
 if x == 5 {
 	z = 10
 }

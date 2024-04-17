@@ -33,7 +33,7 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    // println!("{:?}", tokens);
+    println!("{:?}", tokens);
 
     let tree = parse(tokens);
     println!("Tree: {:?} Length: {:?}", tree, tree.len());

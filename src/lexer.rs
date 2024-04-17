@@ -49,6 +49,8 @@ pub struct Token<> {
 
 pub fn tokenize(content: &str) -> Vec<Token> {
     let keywords: Vec<(TokenType, Regex)> = Vec::from([
+        (TokenType::Comment, Regex::new(r"^[/][/][ ]*").unwrap()),
+        (TokenType::Newline, Regex::new(r"^[\n][ ]*").unwrap()),
         (TokenType::Print, Regex::new(r"^print[ ]*").unwrap()),
         (TokenType::Tilda, Regex::new(r"^~[ ]*").unwrap()),
         (TokenType::For, Regex::new(r"^for[ ]*").unwrap()),
@@ -66,7 +68,6 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         (TokenType::MinusMinus, Regex::new(r"^[-][-][ ]*").unwrap()),
         (TokenType::Minus, Regex::new(r"^[-][ ]*").unwrap()),
         (TokenType::Times, Regex::new(r"^[*][ ]*").unwrap()),
-        (TokenType::Comment, Regex::new(r"^[/][/][ ]*").unwrap()),
         (TokenType::Divide, Regex::new(r"^[/][ ]*").unwrap()),
         (TokenType::LesserThan, Regex::new(r"^[<][ ]*").unwrap()),
         (TokenType::GreaterThan, Regex::new(r"^[>][ ]*").unwrap()),
@@ -94,6 +95,13 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         for (kind, regex) in &keywords {
             let capture = capture(regex.clone(), split, *kind);
             if capture != "".to_string() {
+                match *kind {
+                    TokenType::Comment | TokenType::Newline => {
+                        tokens.push(Token{kind: TokenType::Newline, value: "\n".to_string()});
+                        return tokens;
+                    }
+                    _ => {}
+                }
                 cursor += &capture.len(); 
                 let token = Token{kind: *kind, value: capture.trim().to_string()};
                 tokens.push(token);
