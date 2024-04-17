@@ -162,7 +162,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::Semicolon | TokenType::Newline => {
+            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace => {
                 break;
             }
             TokenType::Name => {
@@ -214,7 +214,7 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::Semicolon | TokenType::Newline => {
+            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace => {
                 break;
             }
             TokenType::Name => {
@@ -262,7 +262,7 @@ pub fn parse_un(tokens: Vec<Token>) -> (Expr, usize) {
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::Semicolon | TokenType::Newline => {
+            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace => {
                 break;
             }
             TokenType::Name => {

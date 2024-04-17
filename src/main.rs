@@ -36,7 +36,7 @@ fn main() -> std::io::Result<()> {
     // println!("{:?}", tokens);
 
     let tree = parse(tokens);
-    // println!("Tree: {:?} Length: {:?}", tree, tree.len());
+    println!("Tree: {:?} Length: {:?}", tree, tree.len());
 
     let mut scopes: Vec<HashMap<String, DataType>> = Vec::new();
     interpret(tree, &mut scopes);
