@@ -69,9 +69,15 @@ pub enum BlockType {
 
 #[derive(Debug, Clone)]
 pub struct Block {
-    kind: BlockType,
-    conditions: Vec<Box<Expr>>,
-    block: Vec<Box<Expr>>,
+    pub kind: BlockType,
+    pub conditions: Vec<Box<Expr>>,
+    pub block: Vec<Box<Expr>>,
+}
+
+impl Block {
+    pub fn new() -> Self {
+        return Block{kind: BlockType::Nil, conditions: Vec::new(), block: Vec::new()};
+    }  
 }
 
 #[derive(Debug, Clone)]
@@ -131,11 +137,11 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
         _ => {}, 
     }
     let mut expr: Expr = Expr::Nil; 
-    let mut i:usize = 0;
+    let mut i:usize = 1;
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::Semicolon => {
+            TokenType::Semicolon | TokenType::Newline => {
                 break;
             }
             TokenType::Name => {
@@ -150,7 +156,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
             TokenType::Bool => {
                 expr = Expr::Literal(Literal::Bool(value));
             }
-            TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide => {
+            TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide | TokenType::EqualTo => {
                 let j: usize;
                 (expr, j) = parse_bin(tokens[i..].to_vec(), expr.clone());
                 i += j-1;
@@ -174,6 +180,7 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
         TokenType::Minus=>{operator = Operator::Minus},
         TokenType::Times=>{operator = Operator::Times},
         TokenType::Divide=>{operator = Operator::Divide},
+        TokenType::EqualTo=>{operator = Operator::EqualTo},
         _ => {}, 
     }
     let mut bin = BinaryExpr{operator, left: Box::new(left), right: Box::new(Expr::Nil)};
@@ -181,7 +188,7 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::Semicolon => {
+            TokenType::Semicolon | TokenType::Newline => {
                 break;
             }
             TokenType::Name => {
@@ -196,7 +203,7 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
             TokenType::Bool => {
                 bin.right = Box::new(Expr::Literal(Literal::Bool(value)));
             }
-            TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide => {
+            TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide | TokenType::EqualTo => {
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_bin(tokens[i..].to_vec(), Expr::Binary(bin.clone()));
@@ -229,7 +236,7 @@ pub fn parse_un(tokens: Vec<Token>) -> (Expr, usize) {
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::Semicolon => {
+            TokenType::Semicolon | TokenType::Newline => {
                 break;
             }
             TokenType::Name => {

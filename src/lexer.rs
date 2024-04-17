@@ -108,6 +108,7 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         }
     }
 
+    tokens.push(Token{kind: TokenType::Newline, value: "\n".to_string()});
     return tokens;
 }
 
