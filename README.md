@@ -10,12 +10,6 @@ A bash 🐚 alternative with reasonable syntax, written in Rust.
       }
   }
 ```
-# Types 📦
-- string ("hello world" || 'hello world')
-- int
-- float
-- bool
-
 # TODO ✅
 - [x] Add types
 - [x] Add variables
