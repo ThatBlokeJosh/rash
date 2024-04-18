@@ -32,8 +32,9 @@ Please don't look here
 | Rash 🚀      | 13.28s    |
 | Python 🐍    | 1.45s     |
 | Rust 🦀      | 0.35s     |
+| JavaScript 🕸️| 4.52s     |
 
-## Code tested
+### Code tested
 
 ```go
 for i = 0; i < 100; ++i; {
