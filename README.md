@@ -22,3 +22,27 @@ A bash 🐚 alternative with reasonable syntax, written in Rust.
 - [x] Add loops, conditions and basic functions
 - [ ] More programming fundamentals
 - [ ] LSP???
+
+# Benchmark 📈
+
+Please don't look here
+
+| Language     | Time      |
+|--------------|-----------|
+| Rash 🚀      | 13.28s    |
+| Python 🐍    | 1.45s     |
+| Rust 🦀      | 0.35s     |
+
+## Code tested
+
+```go
+for i = 0; i < 100; ++i; {
+	for j = 0; j < 100; ++j; {
+		for k = 0; k < 100; ++k; {
+			print(i * j * k;);
+		}
+	}
+}
+```
+
+Honestly I'm quite pleased with this outcome, this language is pretty naively implemented so it's cool to see it working

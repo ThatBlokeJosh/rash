@@ -1,6 +1,7 @@
-for i = 0; i < 10; ++i; {
-    if i == 7; {
-	    print(5 + 5;);
-    }
-    print(i);
+for i = 0; i < 100; ++i; {
+	for j = 0; j < 100; ++j; {
+		for k = 0; k < 100; ++k; {
+			print(i * j * k;);
+		}
+	}
 }
