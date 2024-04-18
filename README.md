@@ -27,7 +27,8 @@ Please don't look here
 | Rash 🚀      | 13.28s    |
 | Python 🐍    | 1.45s     |
 | Rust 🦀      | 0.35s     |
-| JavaScript 🟨| 4.52s     |
+| JavaScript 🟨| 4.87s     |
+| TypeScript 🟦| 4.57s     |
 
 ### Code tested
 
