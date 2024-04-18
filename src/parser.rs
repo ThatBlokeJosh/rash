@@ -116,33 +116,42 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Box<Expr>> {
     let mut tree: Vec<Box<Expr>> = Vec::new();
     let mut i:usize = 0;
     while i < tokens.len() { 
+        i += parse_any(tokens[i..].to_vec(), &mut tree, false);
+        i += 1
+    }
+    return tree;
+}
+
+
+pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool) -> usize {
+    let mut i:usize = 0;
+    while i < tokens.len() { 
         let value = &tokens[i].value;
         match tokens[i].kind {
-            TokenType::Name => {
-                match tokens[i+1].kind {
-                    TokenType::Equals => {
-                        let j: usize;
-                        let expr: Expr;
-                        (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
-                        tree.push(Box::new(expr));
-                        i += j;
-                    }
-                    TokenType::EqualTo => {
-                        let j: usize;
-                        let expr: Expr;
-                        (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
-                        tree.push(Box::new(expr));
-                        i += j;
-                    }
-                    TokenType::LesserThan => {
-                        let j: usize;
-                        let expr: Expr;
-                        (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
-                        tree.push(Box::new(expr));
-                        i += j;
-                    }
-                    _ => {}
+            TokenType::OpeningBrace => {
+                if conditions {
+                    break;
                 }
+            }
+            TokenType::ClosingBrace => {
+                break;
+            }
+            TokenType::ClosingBracket => {
+                break;
+            }
+            TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_string(tokens[i..].to_vec());
+                tree.push(Box::new(expr));
+                i += j;
+            }
+            TokenType::Name => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                tree.push(Box::new(expr));
+                i += j;
             }
             TokenType::If | TokenType::ElseIf | TokenType::Else | TokenType::For => {
                 let j: usize;
@@ -150,6 +159,29 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Box<Expr>> {
                 (expr, j) = parse_block(tokens[i..].to_vec());
                 tree.push(Box::new(expr));
                 i += j;
+            }
+
+            TokenType::PlusPlus | TokenType::MinusMinus => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_un(tokens[i..].to_vec());
+                tree.push(Box::new(expr));
+                i += j;
+            }
+            TokenType::Equals | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualGreater | TokenType::EqualLesser | TokenType::Plus => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_bin(tokens[i..].to_vec(), *tree[tree.len()-1].clone());
+                tree.push(Box::new(expr));
+                i += j;
+            }
+            TokenType::Number => {
+                let expr = Expr::Literal(Literal::Int(value.to_string()));
+                tree.push(Box::new(expr));
+            }
+            TokenType::Bool => {
+                let expr = Expr::Literal(Literal::Bool(value.to_string()));
+                tree.push(Box::new(expr));
             }
             TokenType::Print => {
                 let j: usize;
@@ -162,7 +194,26 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Box<Expr>> {
         }
         i += 1
     }
-    return tree;
+    return i;
+}
+
+pub fn parse_string(tokens: Vec<Token>) -> (Expr, usize) {
+    let mut i:usize = 1;
+    let mut content: String = "".to_string();
+    while i < tokens.len() { 
+        let value = (&tokens[i].value).to_string();
+        match tokens[i].kind {
+            TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
+                i += 1;
+                break;
+            }
+            _ => {
+                content += &value;
+            }
+        }
+        i += 1;
+    }
+    return (Expr::Literal(Literal::String(content)), i);
 }
 
 pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
@@ -178,21 +229,25 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
         TokenType::EqualLesser=>{operator = Operator::EqualLesser},
         TokenType::LesserThan=>{operator = Operator::LesserThan},
         TokenType::GreaterThan=>{operator = Operator::GreaterThan},
-        _ => {}, 
+        _ => {
+            return (Expr::Literal(Literal::Variable(name)), 0);
+        }, 
     }
     let mut expr: Expr = Expr::Nil; 
     let mut i:usize = 1;
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace => {
+            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace | TokenType::ClosingBracket => {
                 break;
             }
             TokenType::Name => {
                 expr = Expr::Literal(Literal::Variable(value));
             }
-            TokenType::String => {
-                expr = Expr::Literal(Literal::String(value));
+            TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
+                let j: usize;
+                (expr, j) = parse_string(tokens[i..].to_vec());
+                i += j-1;
             }
             TokenType::Number => {
                 expr = Expr::Literal(Literal::Int(value));
@@ -242,8 +297,12 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
             TokenType::Name => {
                 bin.right = Box::new(Expr::Literal(Literal::Variable(value)));
             }
-            TokenType::String => {
-                bin.right = Box::new(Expr::Literal(Literal::String(value)));
+            TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_string(tokens[i..].to_vec());
+                bin.right = Box::new(expr);
+                i += j-1;
             }
             TokenType::Number => {
                 bin.right = Box::new(Expr::Literal(Literal::Int(value)));
@@ -313,88 +372,15 @@ pub fn parse_block(tokens: Vec<Token>) -> (Expr, usize) {
     let mut i:usize = 1;
     let mut open = false;
     while i < tokens.len() { 
-        let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::OpeningBrace => {
-                open = true
-            }
-            TokenType::ClosingBrace => {
-                break;
-            }
-            TokenType::Name => {
-                match tokens[i+1].kind {
-                    TokenType::Equals | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualGreater | TokenType::EqualLesser => {
-                        let j: usize;
-                        let expr: Expr;
-                        (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
-                        if open {
-                            block.block.push(Box::new(expr));
-                        } else {
-                            block.conditions.push(Box::new(expr));
-                        }
-                        i += j;
-                    }
-                    _ => {}
-                }
-            }
-            TokenType::String => {
-                let expr = Expr::Literal(Literal::String(value));
-                if open {
-                    block.block.push(Box::new(expr));
-                } else {
-                    block.conditions.push(Box::new(expr));
-                }
-            }
-            TokenType::Number => {
-                let expr = Expr::Literal(Literal::Int(value));
-                if open {
-                    block.block.push(Box::new(expr));
-                } else {
-                    block.conditions.push(Box::new(expr));
-                }
-            }
-            TokenType::Bool => {
-                let expr = Expr::Literal(Literal::Bool(value));
-                if open {
-                    block.block.push(Box::new(expr));
-                } else {
-                    block.conditions.push(Box::new(expr));
-                }
-            }
-
-            TokenType::PlusPlus | TokenType::MinusMinus => {
-                let j: usize;
-                let expr: Expr;
-                (expr, j) = parse_un(tokens[i..].to_vec());
-                i += j;
-                if open {
-                    block.block.push(Box::new(expr));
-                } else {
-                    block.conditions.push(Box::new(expr));
-                }
-            }
-
-            TokenType::Print => {
-                let j: usize;
-                let expr: Expr;
-                (expr, j) = parse_function(tokens[i..].to_vec());
-                if open {
-                    block.block.push(Box::new(expr));
-                } else {
-                    block.conditions.push(Box::new(expr));
-                }
-                i += j;
-            }
-
-            TokenType::If | TokenType::ElseIf | TokenType::Else | TokenType::For => {
-                let j: usize;
-                let expr: Expr;
-                (expr, j) = parse_block(tokens[i..].to_vec());
-                block.block.push(Box::new(expr));
-                i += j;
-            }
             _ => {
-
+                if open {
+                    i += parse_any(tokens[i..].to_vec(), &mut block.block, false);
+                    break;
+                } else {
+                    i += parse_any(tokens[i..].to_vec(), &mut block.conditions, true);
+                    open = true;
+                }
             }
         }
         i += 1;
@@ -411,52 +397,6 @@ pub fn parse_function(tokens: Vec<Token>) -> (Expr, usize) {
     }
     let mut func: Function = Function{kind: function_kind, arguments: Vec::new()};
     let mut i:usize = 1;
-    while i < tokens.len() { 
-        let value = (&tokens[i].value).to_string();
-        match tokens[i].kind {
-            TokenType::ClosingBracket => {
-                break;
-            }
-            TokenType::Name => {
-                match tokens[i+1].kind {
-                    TokenType::Equals | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualGreater | TokenType::EqualLesser | TokenType::Plus => {
-                        let j: usize;
-                        let expr: Expr;
-                        (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
-                        func.arguments.push(Box::new(expr));
-                        i += j;
-                    }
-                    _ => {
-                        let expr = Expr::Literal(Literal::Variable(value));
-                        func.arguments.push(Box::new(expr));
-                    }
-                }
-            }
-            TokenType::String => {
-                let expr = Expr::Literal(Literal::String(value));
-                func.arguments.push(Box::new(expr));
-            }
-            TokenType::Number => {
-                let expr = Expr::Literal(Literal::Int(value));
-                func.arguments.push(Box::new(expr));
-            }
-            TokenType::Bool => {
-                let expr = Expr::Literal(Literal::Bool(value));
-                func.arguments.push(Box::new(expr));
-            }
-
-            TokenType::PlusPlus | TokenType::MinusMinus => {
-                let j: usize;
-                let expr: Expr;
-                (expr, j) = parse_un(tokens[i..].to_vec());
-                func.arguments.push(Box::new(expr));
-                i += j;
-            }
-            _ => {
-
-            }
-        }
-        i += 1;
-    }
+    i += parse_any(tokens[i..].to_vec(), &mut func.arguments, false);
     return (Expr::Function(func), i);
 }

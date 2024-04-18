@@ -40,6 +40,12 @@ pub enum TokenType {
     Comment,
     Newline,
     Comma,
+    SingleQuote,
+    DoubleQuote,
+    Content,
+    Dollar,
+    FormattedQuote,
+    CommandQuote,
 }
 
 #[derive(Debug, Clone)]
@@ -61,8 +67,10 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         (TokenType::Else, Regex::new(r"^else[ ]*").unwrap()),
         (TokenType::Float, Regex::new(r"^[-]?([\d| |]*[.])[\d| |]*").unwrap()),
         (TokenType::Number, Regex::new(r"^[-]?\d[\d| |]*").unwrap()),
-        (TokenType::String, Regex::new(r"^'[^']*'").unwrap()),
-        (TokenType::String, Regex::new(r#"^"[^"]*""#).unwrap()),
+        (TokenType::FormattedQuote, Regex::new(r#"^[f]["][ ]*"#).unwrap()),
+        (TokenType::CommandQuote, Regex::new(r#"^[c]["][ ]*"#).unwrap()),
+        (TokenType::SingleQuote, Regex::new(r"^['][ ]*").unwrap()),
+        (TokenType::DoubleQuote, Regex::new(r#"^["][ ]*"#).unwrap()),
         (TokenType::Bool, Regex::new(r"^true[ ]*").unwrap()),
         (TokenType::Bool, Regex::new(r"^false[ ]*").unwrap()),
         (TokenType::PlusPlus, Regex::new(r"^[+][+][ ]*").unwrap()),
@@ -88,33 +96,67 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         (TokenType::ClosingBracket, Regex::new(r"^[)][ ]*").unwrap()),
         (TokenType::Name, Regex::new(r"(?<name>[A-Za-z_\d ]*)").unwrap()),
     ]);
+
+    let string_checkers: Vec<(TokenType, Regex)> = Vec::from([
+        (TokenType::SingleQuote, Regex::new(r"^[']").unwrap()),
+        (TokenType::DoubleQuote, Regex::new(r#"^["]"#).unwrap()),
+        (TokenType::Dollar, Regex::new(r"^[$][ ]*").unwrap()),
+        (TokenType::OpeningBrace, Regex::new(r"^[{][ ]*").unwrap()),
+        (TokenType::ClosingBrace, Regex::new(r"^[}][ ]*").unwrap()),
+        (TokenType::Content, Regex::new(r#"(?<name>[^'^"^}^$^{]*)"#).unwrap()),
+    ]);
     let mut tokens: Vec<Token> = Vec::new();
     let mut cursor: usize = 0;
     let mut index: usize = keywords.len();
+
+    let mut string_starter = false;
+    let mut iterator = content.trim();
     
-    while cursor < content.trim().len() {
-        let split = &content.trim()[cursor..].trim();
-        for (kind, regex) in &keywords {
-            let capture = capture(&regex, split, *kind);
-            if capture != "".to_string() {
-                let mut value = capture.trim().to_string();
-                match *kind {
-                    TokenType::Comment | TokenType::Newline => {
-                        tokens.push(Token{kind: TokenType::Newline, value: "\n".to_string()});
-                        return tokens;
+    while iterator != "" {
+        iterator = &iterator.trim()[cursor..].trim();
+        if iterator == "" {
+            break;
+        }
+        if string_starter {
+            for (kind, regex) in &string_checkers {
+                let capture = capture(&regex, iterator, *kind);
+                if capture != "".to_string() {
+                    let value = capture.to_string();
+                    match *kind {
+                        TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
+                            string_starter = false;
+                        }
+                        _ => {}
                     }
-                    TokenType::String => {
-                        value = value[1..value.len()-1].to_string();
-                    }
-                    _ => {}
+                    cursor = capture.len(); 
+                    let token = Token{kind: *kind, value};
+                    tokens.push(token);
+                    break;
                 }
-                cursor += &capture.len(); 
-                let token = Token{kind: *kind, value};
-                tokens.push(token);
-                index = keywords.len();
-                break;
-            } else {
-              index -= 1  
+            }
+        } else {
+            for (kind, regex) in &keywords {
+                let capture = capture(&regex, iterator, *kind);
+                if capture != "".to_string() {
+                    let value = capture.trim().to_string();
+                    match *kind {
+                        TokenType::Comment | TokenType::Newline => {
+                            tokens.push(Token{kind: TokenType::Newline, value: "\n".to_string()});
+                            return tokens;
+                        }
+                        TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
+                            string_starter = true;
+                        }
+                        _ => {}
+                    }
+                    cursor = capture.len(); 
+                    let token = Token{kind: *kind, value};
+                    tokens.push(token);
+                    index = keywords.len();
+                    break;
+                } else {
+                  index -= 1  
+                }
             }
         }
         if index <= 0 {
