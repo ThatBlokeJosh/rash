@@ -10,6 +10,7 @@ A bash 🐚 alternative with reasonable syntax, written in Rust.
       }
   }
 ```
+
 # TODO ✅
 - [x] Add types
 - [x] Add variables
@@ -26,7 +27,7 @@ Please don't look here
 | Rash 🚀      | 13.28s    |
 | Python 🐍    | 1.45s     |
 | Rust 🦀      | 0.35s     |
-| JavaScript 🕸️| 4.52s     |
+| JavaScript 🟨| 4.52s     |
 
 ### Code tested
 
