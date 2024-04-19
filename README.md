@@ -4,16 +4,16 @@ A bash 🐚 alternative with reasonable syntax, written in Rust.
 
 # Basic syntax 📜
 ```go
-  for i = 0; i < 10; ++i; {
-      if i == 7; {
-        print("Lucky number!");
-      }
+for i = 0; i < 10; ++i; {
+  if i == 7; {
+    print("Lucky number!");
   }
+}
 ```
 ```go 
 // Shell command syntax
-    url = "https://pokey.remington.boo" // Great website 
-    c"curl ${url}"
+url = "https://pokey.remington.boo" // Great website 
+c"curl ${url}"
 ```
 
 # TODO ✅
