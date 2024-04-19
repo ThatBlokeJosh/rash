@@ -10,6 +10,11 @@ A bash 🐚 alternative with reasonable syntax, written in Rust.
       }
   }
 ```
+```go 
+// Shell command syntax
+    url = "https://pokey.remington.boo" // Great website 
+    c"curl ${url}"
+```
 
 # TODO ✅
 - [x] Add types
@@ -35,11 +40,11 @@ Please don't look here
 
 ```go
 for i = 0; i < 100; ++i; {
-	for j = 0; j < 100; ++j; {
-		for k = 0; k < 100; ++k; {
-			print(i * j * k;);
-		}
+    for j = 0; j < 100; ++j; {
+	for k = 0; k < 100; ++k; {
+		print(i * j * k;);
 	}
+    }
 }
 ```
 

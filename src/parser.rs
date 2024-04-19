@@ -74,6 +74,8 @@ pub enum BlockType {
     Else,
     ElseIf,
     For,
+    FormatedString,
+    CommandString,
     Nil,
 }
 
@@ -139,14 +141,21 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
             TokenType::ClosingBracket => {
                 break;
             }
-            TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
+            TokenType::SingleQuote | TokenType::DoubleQuote => {
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_string(tokens[i..].to_vec());
                 tree.push(Box::new(expr));
                 i += j;
             }
-            TokenType::Name => {
+            TokenType::CommandQuote | TokenType::FormattedQuote => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_fstring(tokens[i..].to_vec());
+                tree.push(Box::new(expr));
+                i += j;
+            }
+            TokenType::Name | TokenType::Content => {
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
@@ -198,11 +207,22 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
 }
 
 pub fn parse_string(tokens: Vec<Token>) -> (Expr, usize) {
+    let mut block_kind: BlockType = BlockType::Nil;
+    match tokens[0].kind {
+        TokenType::FormattedQuote => {block_kind = BlockType::FormatedString}
+        TokenType::CommandQuote => {block_kind = BlockType::CommandString}
+        _ => {}, 
+    }
+    let mut block: Block = Block{kind: block_kind, block: Vec::new(), conditions: Vec::new()};
     let mut i:usize = 1;
     let mut content: String = "".to_string();
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
+            TokenType::Dollar => {
+                i += parse_any(tokens[i..].to_vec(), &mut block.block, false);
+                println!("{:?}", block.block)
+            }
             TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
                 i += 1;
                 break;
@@ -213,7 +233,38 @@ pub fn parse_string(tokens: Vec<Token>) -> (Expr, usize) {
         }
         i += 1;
     }
+    if block.block.len() > 0 {
+        return (Expr::Block(block), i);
+    }
     return (Expr::Literal(Literal::String(content)), i);
+}
+
+pub fn parse_fstring(tokens: Vec<Token>) -> (Expr, usize) {
+    let mut block_kind: BlockType = BlockType::Nil;
+    match tokens[0].kind {
+        TokenType::FormattedQuote => {block_kind = BlockType::FormatedString}
+        TokenType::CommandQuote => {block_kind = BlockType::CommandString}
+        _ => {}, 
+    }
+    let mut block: Block = Block{kind: block_kind, block: Vec::new(), conditions: Vec::new()};
+    let mut i:usize = 1;
+    while i < tokens.len() { 
+        let value = (&tokens[i].value).to_string();
+        match tokens[i].kind {
+            TokenType::Dollar => {
+                i += parse_any(tokens[i..].to_vec(), &mut block.block, false);
+            }
+            TokenType::DoubleQuote => {
+                i += 1;
+                break;
+            }
+            _ => {
+                block.block.push(Box::new(Expr::Literal(Literal::String(value))))
+            }
+        }
+        i += 1;
+    }
+    return (Expr::Block(block), i);
 }
 
 pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
@@ -244,10 +295,15 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
             TokenType::Name => {
                 expr = Expr::Literal(Literal::Variable(value));
             }
-            TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
+            TokenType::SingleQuote | TokenType::DoubleQuote => {
                 let j: usize;
                 (expr, j) = parse_string(tokens[i..].to_vec());
                 i += j-1;
+            }
+            TokenType::CommandQuote | TokenType::FormattedQuote => {
+                let j: usize;
+                (expr, j) = parse_fstring(tokens[i..].to_vec());
+                i += j;
             }
             TokenType::Number => {
                 expr = Expr::Literal(Literal::Int(value));

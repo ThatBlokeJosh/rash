@@ -122,15 +122,22 @@ pub fn tokenize(content: &str) -> Vec<Token> {
                 let capture = capture(&regex, iterator, *kind);
                 if capture != "".to_string() {
                     let value = capture.to_string();
+                    let mut extra_spaces = 0;
                     match *kind {
                         TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
                             string_starter = false;
+                        }
+                        TokenType::ClosingBrace => {
+                            extra_spaces = capture.len() -1;
                         }
                         _ => {}
                     }
                     cursor = capture.len(); 
                     let token = Token{kind: *kind, value};
                     tokens.push(token);
+                    for _i in 0..extra_spaces {
+                        tokens.push(Token{kind: TokenType::Content, value: " ".to_string()});
+                    }
                     break;
                 }
             }
