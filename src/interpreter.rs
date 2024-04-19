@@ -6,6 +6,8 @@ use crate::parser::{BinaryExpr, Block, BlockType, DataType, Definition, Expr, Fu
 pub fn interpret(tree: Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) {
     let mut scope: HashMap<String, DataType> = HashMap::new();
     scopes.push(scope.clone());
+    let mut if_status = false;
+    let mut if_started = false;
     for branch in tree {
         match *branch {
             Expr::Binary(expr) => {
@@ -22,27 +24,46 @@ pub fn interpret(tree: Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType
             }
             Expr::Block(expr) => {
                 match expr.kind {
-                    BlockType::If | BlockType::ElseIf => {
-                        run_if(expr.clone(), scopes, functions).expect("Error");
+                    BlockType::If => {
+                        if_status = run_if(expr.clone(), scopes, functions).expect("Error");
+                        if_started = true;
                     }
+                    BlockType::ElseIf => {
+                        if if_started && !if_status {
+                            if_status = run_if(expr.clone(), scopes, functions).expect("Error");
+                        }
+                    }
+
                     BlockType::Else => {
-                        run_else(expr.clone(), scopes, functions).expect("Error");
+                        if if_started && !if_status {
+                            run_else(expr.clone(), scopes, functions).expect("Error");
+                        }
+                        if_status = false;
+                        if_started = false;
                     }
 
                     BlockType::For => {
+                        if_status = false;
+                        if_started = false;
                         run_for(&expr, scopes, functions).expect("Error");
                     }
                     BlockType::FormatedString => {
+                        if_status = false;
+                        if_started = false;
                         format_string(&expr, scopes);
                     }
 
                     BlockType::CommandString => {
+                        if_status = false;
+                        if_started = false;
                         shell_string(&expr, scopes, true);
                     }
                     _ => {} 
                 }
             }
             Expr::Function(mut expr) => {
+                if_status = false;
+                if_started = false;
                 match expr.kind {
                     FunctionType::Print => {
                         run_print(expr.clone(), scopes)
@@ -54,6 +75,8 @@ pub fn interpret(tree: Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType
                 }
             }
             Expr::Definition(expr) => {
+                if_status = false;
+                if_started = false;
                 functions.insert(expr.name.clone(), expr);
             }
             _ => {},
@@ -227,7 +250,7 @@ pub fn run_function<'a>(call: &mut Function, scopes: &mut Vec<HashMap<String, Da
     return Ok(());
 }
 
-pub fn run_if(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
+pub fn run_if(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<bool, String> {
     if expr.conditions.len() != 1 {
        return Err("Conditions to this statement are invalid".to_string()); 
     }
@@ -242,7 +265,7 @@ pub fn run_if(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>, func
         interpret(expr.block.clone(), scopes, functions)
     }
 
-    return Ok(());
+    return Ok(condition);
 }
 
 pub fn run_else(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
@@ -259,6 +282,11 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
         }
         while condition {
             interpret(expr.block.clone(), scopes, functions);
+
+            let condition_str = calculate_bexpr(*expr.conditions[0].clone(), scopes).unwrap().value;
+            if condition_str == "false".to_string() {
+                break;
+            }
         }
     } else if expr.conditions.len() != 3 {
        return Err("Conditions to this statement are invalid".to_string()); 

@@ -342,7 +342,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
             TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualLesser | TokenType::EqualGreater => {
                 let j: usize;
                 (expr, j) = parse_bin(tokens[i..].to_vec(), expr.clone());
-                i += j-1;
+                i += j;
             }
             _ => {
 
