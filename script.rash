@@ -1,2 +1,2 @@
 url = "https://pokey.remington.boo" // Great website 
-c"curl ${url}"
+print(f"Click to visit a great website: ${url} CLICK IT NOW!";);
