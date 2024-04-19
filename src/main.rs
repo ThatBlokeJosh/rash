@@ -7,7 +7,7 @@ use std::fs::File;
 use std::io::prelude::*;
 
 use lexer::Token;
-use parser::DataType;
+use parser::{DataType, Definition};
 
 use crate::interpreter::interpret;
 use crate::parser::parse;
@@ -38,7 +38,8 @@ fn main() -> std::io::Result<()> {
     // println!("Tree: {:?} Length: {:?}", tree, tree.len());
 
     let mut scopes: Vec<HashMap<String, DataType>> = Vec::new();
-    interpret(tree, &mut scopes);
+    let mut functions: HashMap<String, Definition> = HashMap::new();
+    interpret(tree, &mut scopes, &mut functions);
 
     return Ok(());
 }

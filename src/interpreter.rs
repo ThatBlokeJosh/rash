@@ -1,9 +1,9 @@
 use std::{collections::HashMap, i32};
 use std::process::Command;
 
-use crate::parser::{BinaryExpr, Block, BlockType, DataType, Expr, Function, FunctionType, Literal, Operator, UnaryExpr};
+use crate::parser::{BinaryExpr, Block, BlockType, DataType, Definition, Expr, Function, FunctionType, Literal, Operator, UnaryExpr};
 
-pub fn interpret(tree: Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>) {
+pub fn interpret(tree: Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) {
     let mut scope: HashMap<String, DataType> = HashMap::new();
     scopes.push(scope.clone());
     for branch in tree {
@@ -23,32 +23,38 @@ pub fn interpret(tree: Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType
             Expr::Block(expr) => {
                 match expr.kind {
                     BlockType::If | BlockType::ElseIf => {
-                        run_if(expr.clone(), scopes).expect("Error");
+                        run_if(expr.clone(), scopes, functions).expect("Error");
                     }
                     BlockType::Else => {
-                        run_else(expr.clone(), scopes).expect("Error");
+                        run_else(expr.clone(), scopes, functions).expect("Error");
                     }
 
                     BlockType::For => {
-                        run_for(&expr, scopes).expect("Error");
+                        run_for(&expr, scopes, functions).expect("Error");
                     }
                     BlockType::FormatedString => {
                         format_string(&expr, scopes);
                     }
 
                     BlockType::CommandString => {
-                        shell_string(&expr, scopes);
+                        shell_string(&expr, scopes, true);
                     }
                     _ => {} 
                 }
             }
-            Expr::Function(expr) => {
+            Expr::Function(mut expr) => {
                 match expr.kind {
                     FunctionType::Print => {
                         run_print(expr.clone(), scopes)
                     }
+                    FunctionType::Defined => {
+                        run_function(&mut expr, scopes, functions).expect("Error");
+                    } 
                     _ => {} 
                 }
+            }
+            Expr::Definition(expr) => {
+                functions.insert(expr.name.clone(), expr);
             }
             _ => {},
         }
@@ -75,6 +81,9 @@ pub fn calculate_bexpr(ref in_expr: Expr, scopes: &mut Vec<HashMap<String, DataT
             match x.kind {
                 BlockType::FormatedString => {
                     return format_string(&x, scopes);
+                }
+                BlockType::CommandString => {
+                    return shell_string(&x, scopes, false);
                 }
                 _ => {return None;} 
             }
@@ -164,7 +173,7 @@ pub fn format_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) 
     return Some(value);
 }
 
-pub fn shell_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) -> Option<DataType> {
+pub fn shell_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, print_out: bool) -> Option<DataType> {
     let mut value: DataType = DataType { value: "".to_string(), kind: Literal::String("".to_string()) };
     for content in expr.block.clone() {
         match *content {
@@ -194,11 +203,31 @@ pub fn shell_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) -
     };
     let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
     let stdout = DataType{value: stdout_str.clone(), kind: Literal::String(stdout_str)};
-    print!("{}", stdout.value);
+    if print_out {
+        print!("{}", stdout.value);
+    }
     return Some(stdout);
 }
 
-pub fn run_if(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>) -> Result<(), String> {
+pub fn run_function<'a>(call: &mut Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), &'a str> {
+    let mut scope: HashMap<String, DataType> = HashMap::new();
+    let expr = functions.get(call.name.as_str()).unwrap(); 
+    if expr.arguments.len() != call.arguments.len() {
+        return Err("Invalid ammount of arguments to this function");
+    }
+
+    for i in 0..call.arguments.len() {
+        let output = calculate_bexpr(*call.arguments[i].clone(), scopes).unwrap();
+        let name = expr.arguments[i].clone().unwrap().unwrap();
+        scope.insert(name.value, output);
+    }
+    scopes.push(scope);
+    interpret(expr.block.to_vec(), scopes, functions);
+    scopes.pop();
+    return Ok(());
+}
+
+pub fn run_if(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
     if expr.conditions.len() != 1 {
        return Err("Conditions to this statement are invalid".to_string()); 
     }
@@ -210,18 +239,18 @@ pub fn run_if(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>) -> R
     }
     
     if condition {
-        interpret(expr.block.clone(), scopes)
+        interpret(expr.block.clone(), scopes, functions)
     }
 
     return Ok(());
 }
 
-pub fn run_else(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>) -> Result<(), String> {
-    interpret(expr.block.clone(), scopes);
+pub fn run_else(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
+    interpret(expr.block.clone(), scopes, functions);
     return Ok(());
 }
 
-pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) -> Result<(), String> {
+pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
     let mut condition = false;
     if expr.conditions.len() == 1 {
         let condition_str = calculate_bexpr(*expr.conditions[0].clone(), scopes).unwrap().value;
@@ -229,7 +258,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) -> Res
             condition = true
         }
         while condition {
-            interpret(expr.block.clone(), scopes);
+            interpret(expr.block.clone(), scopes, functions);
         }
     } else if expr.conditions.len() != 3 {
        return Err("Conditions to this statement are invalid".to_string()); 
@@ -261,7 +290,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) -> Res
     }
 
     while condition {
-        interpret(expr.block.to_vec(), scopes);
+        interpret(expr.block.to_vec(), scopes, functions);
 
         let output = calculate_unexpr(iterator_updater.clone(), scopes).unwrap();
         scope.insert(iterator_key.clone(), output);

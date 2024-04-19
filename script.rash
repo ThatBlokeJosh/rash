@@ -1,2 +1,9 @@
-url = "https://pokey.remington.boo" // Great website 
-print(f"Click to visit a great website: ${url} CLICK IT NOW!";);
+fn add(x, y) {
+    print(x + y;)
+}
+
+for i = 0; i < 10; ++i; {
+    for j = 0; j < 10; ++j; {
+	add(i, j);
+    }
+}

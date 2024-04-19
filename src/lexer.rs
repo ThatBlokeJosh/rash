@@ -10,7 +10,6 @@ pub enum TokenType {
     Equals,
     Number,
     Float,
-    String,
     Bool,
     Name,
     Plus,
@@ -46,6 +45,7 @@ pub enum TokenType {
     Dollar,
     FormattedQuote,
     CommandQuote,
+    Function,
 }
 
 #[derive(Debug, Clone)]
@@ -94,6 +94,7 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         (TokenType::ClosingBrace, Regex::new(r"^[}][ ]*").unwrap()),
         (TokenType::OpeningBracket, Regex::new(r"^[(][ ]*").unwrap()),
         (TokenType::ClosingBracket, Regex::new(r"^[)][ ]*").unwrap()),
+        (TokenType::Function, Regex::new(r"(^fn[ ]*)").unwrap()),
         (TokenType::Name, Regex::new(r"(?<name>[A-Za-z_\d ]*)").unwrap()),
     ]);
 
