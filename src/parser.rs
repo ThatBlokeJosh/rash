@@ -7,6 +7,7 @@ pub enum Expr {
     Block(Block),
     Literal(Literal),
     Function(Function),
+    Definition(Definition),
     Nil,
 }
 
@@ -110,6 +111,7 @@ impl Block {
 #[derive(Debug, Clone)]
 pub enum FunctionType {
     Print,
+    Defined,
     Nil,
 }
 
@@ -117,6 +119,22 @@ pub enum FunctionType {
 pub struct Function {
     pub kind: FunctionType,
     pub arguments: Vec<Box<Expr>>,
+    pub name: String,
+}
+
+
+#[derive(Debug, Clone)]
+pub struct Definition {
+    pub name: String,
+    pub arguments: Vec<Box<Expr>>,
+    pub block: Vec<Box<Expr>>,
+    pub returns: Option<DataType>,
+}
+
+impl Definition {
+    pub fn new() -> Self {
+        return Definition{name: "".to_string(), arguments: Vec::new(), block: Vec::new(), returns: None};
+    }  
 }
 
 #[derive(Debug, Clone)]
@@ -210,7 +228,14 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
             TokenType::Print => {
                 let j: usize;
                 let expr: Expr;
-                (expr, j) = parse_function(tokens[i..].to_vec());
+                (expr, j) = parse_function(tokens[i..].to_vec(), "print".to_string());
+                tree.push(Box::new(expr));
+                i += j;
+            }
+            TokenType::Function => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_definition(tokens[i+1..].to_vec());
                 tree.push(Box::new(expr));
                 i += j;
             }
@@ -294,6 +319,9 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
         TokenType::EqualLesser=>{operator = Operator::EqualLesser},
         TokenType::LesserThan=>{operator = Operator::LesserThan},
         TokenType::GreaterThan=>{operator = Operator::GreaterThan},
+        TokenType::OpeningBracket => {
+            return parse_function(tokens[0..].to_vec(), name);
+        },
         _ => {
             return (Expr::Literal(Literal::Variable(name)), 0);
         }, 
@@ -328,7 +356,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
             TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualLesser | TokenType::EqualGreater => {
                 let j: usize;
                 (expr, j) = parse_bin(tokens[i..].to_vec(), expr.clone());
-                i += j-1;
+                i += j;
             }
             _ => {
 
@@ -459,14 +487,45 @@ pub fn parse_block(tokens: Vec<Token>) -> (Expr, usize) {
 }
 
 
-pub fn parse_function(tokens: Vec<Token>) -> (Expr, usize) {
-    let mut function_kind: FunctionType = FunctionType::Nil;
+pub fn parse_function(tokens: Vec<Token>, name: String) -> (Expr, usize) {
+    let mut function_kind: FunctionType = FunctionType::Defined;
     match tokens[0].kind {
         TokenType::Print=>{function_kind = FunctionType::Print},
         _ => {}, 
     }
-    let mut func: Function = Function{kind: function_kind, arguments: Vec::new()};
+    let mut func: Function = Function{kind: function_kind, arguments: Vec::new(), name};
     let mut i:usize = 1;
     i += parse_any(tokens[i..].to_vec(), &mut func.arguments, false);
     return (Expr::Function(func), i);
+}
+
+pub fn parse_definition(tokens: Vec<Token>) -> (Expr, usize) {
+    let mut name = "".to_string();
+    match tokens[0].kind {
+        TokenType::Name=>{name = tokens[0].value.clone()},
+        _ => {}, 
+    }
+    let mut func = Definition::new();
+    func.name = name;
+    let mut i: usize = 1;
+    while i < tokens.len() { 
+        let value = (&tokens[i].value).to_string();
+        match tokens[i].kind {
+            TokenType::ClosingBracket => {
+                i += 1;
+                break;
+            }
+            TokenType::Name => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                func.arguments.push(Box::new(expr));
+                i += j;
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    i += parse_any(tokens[i..].to_vec(), &mut func.block, false);
+    return (Expr::Definition(func), i);
 }
