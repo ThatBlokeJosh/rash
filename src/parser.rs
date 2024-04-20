@@ -15,11 +15,26 @@ pub enum Expr {
 pub struct DataType {
     pub value: String,
     pub kind: Literal,
+    pub store: DataStore,
+}
+
+
+#[derive(Debug, Clone)]
+pub struct DataStore {
+    pub integer: Option<i32>,
+    pub bool: Option<bool>,
 }
 
 impl DataType {
     pub fn new() -> Self {
-        return DataType{kind: Literal::Nil, value: "".to_string()};
+        return DataType{kind: Literal::Nil, value: "".to_string(), store: DataStore::new(None, None)};
+    }
+}
+
+
+impl DataStore {
+    pub fn new(integer: Option<i32>, bool: Option<bool>) -> Self {
+        return DataStore{integer, bool};
     }
 }
 
@@ -29,7 +44,7 @@ impl Expr {
             Expr::Literal(expr) => {
                 let kind = expr.clone();
                 match expr {
-                    Literal::Variable(x) | Literal::Int(x) | Literal::String(x) | Literal::Bool(x) | Literal::Float(x) => {return Some(DataType{value: x, kind});} 
+                    Literal::Variable(x) | Literal::Int(x) | Literal::String(x) | Literal::Bool(x) | Literal::Float(x) => {return Some(DataType{value: x, kind, store: DataStore::new(None, None)});} 
                     _ => {return None;}
                 }
             },
@@ -221,7 +236,6 @@ pub fn parse_string(tokens: Vec<Token>) -> (Expr, usize) {
         match tokens[i].kind {
             TokenType::Dollar => {
                 i += parse_any(tokens[i..].to_vec(), &mut block.block, false);
-                println!("{:?}", block.block)
             }
             TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
                 i += 1;

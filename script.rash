@@ -1,2 +1,5 @@
-url = "https://pokey.remington.boo" // Great website 
-print(f"Click to visit a great website: ${url} CLICK IT NOW!";);
+fn bruno(money) {
+	print(f"Bruno has this much money: ${money}";)
+}
+
+bruno(10;)
