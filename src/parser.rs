@@ -12,7 +12,7 @@ pub enum Expr<'a> {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct DataType<'a> {
     pub value: &'a str,
     pub kind: Literal<'a>,
@@ -20,7 +20,7 @@ pub struct DataType<'a> {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct DataStore {
     pub integer: Option<i32>,
     pub bool: Option<bool>,
@@ -137,7 +137,7 @@ impl Definition<'_> {
     }  
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Literal<'a> {
     String(&'a str),
     Variable(&'a str),

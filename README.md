@@ -29,7 +29,7 @@ Please don't look here
 
 | Language     | Time      |
 |--------------|-----------|
-| Rash 🚀      | 7.88s    |
+| Rash 🚀      | 6.59s    |
 | Bash 🗑️      | 2.60s     |
 | Python 🐍    | 1.45s     |
 | Rust 🦀      | 0.35s     |
