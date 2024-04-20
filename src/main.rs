@@ -1,6 +1,6 @@
+mod interpreter;
 mod lexer;
 mod parser;
-mod interpreter;
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
