@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use regex::Regex;
 
 #[derive(Debug, Clone, Copy)]
@@ -51,8 +52,8 @@ pub struct Token<'a> {
     pub value: &'a str,
 }
 
-pub fn tokenize(content: &str) -> Vec<Token> {
-    let keywords: Vec<(TokenType, Regex)> = Vec::from([
+static KEYWORDS: Lazy<[(TokenType, Regex); 40]> = Lazy::new(|| {
+    [
         (TokenType::Comment, Regex::new(r"^[/][/][ ]*").unwrap()),
         (TokenType::Newline, Regex::new(r"^[\n][ ]*").unwrap()),
         (TokenType::Print, Regex::new(r"^print[ ]*").unwrap()),
@@ -62,10 +63,19 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         (TokenType::If, Regex::new(r"^if[ ]*").unwrap()),
         (TokenType::ElseIf, Regex::new(r"^else if[ ]*").unwrap()),
         (TokenType::Else, Regex::new(r"^else[ ]*").unwrap()),
-        (TokenType::Float, Regex::new(r"^[-]?([\d| |]*[.])[\d| |]*").unwrap()),
+        (
+            TokenType::Float,
+            Regex::new(r"^[-]?([\d| |]*[.])[\d| |]*").unwrap(),
+        ),
         (TokenType::Number, Regex::new(r"^[-]?\d[\d| |]*").unwrap()),
-        (TokenType::FormattedQuote, Regex::new(r#"^[f]["][ ]*"#).unwrap()),
-        (TokenType::CommandQuote, Regex::new(r#"^[c]["][ ]*"#).unwrap()),
+        (
+            TokenType::FormattedQuote,
+            Regex::new(r#"^[f]["][ ]*"#).unwrap(),
+        ),
+        (
+            TokenType::CommandQuote,
+            Regex::new(r#"^[c]["][ ]*"#).unwrap(),
+        ),
         (TokenType::SingleQuote, Regex::new(r"^['][ ]*").unwrap()),
         (TokenType::DoubleQuote, Regex::new(r#"^["][ ]*"#).unwrap()),
         (TokenType::Bool, Regex::new(r"^true[ ]*").unwrap()),
@@ -92,75 +102,98 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         (TokenType::OpeningBracket, Regex::new(r"^[(][ ]*").unwrap()),
         (TokenType::ClosingBracket, Regex::new(r"^[)][ ]*").unwrap()),
         (TokenType::Function, Regex::new(r"(^fn[ ]*)").unwrap()),
-        (TokenType::Name, Regex::new(r"(?<name>[A-Za-z_\d ]*)").unwrap()),
-    ]);
+        (
+            TokenType::Name,
+            Regex::new(r"(?<name>[A-Za-z_\d ]*)").unwrap(),
+        ),
+    ]
+});
 
-    let string_checkers: Vec<(TokenType, Regex)> = Vec::from([
+static STRING_CHECKERS: Lazy<[(TokenType, Regex); 6]> = Lazy::new(|| {
+    [
         (TokenType::SingleQuote, Regex::new(r"^[']").unwrap()),
         (TokenType::DoubleQuote, Regex::new(r#"^["]"#).unwrap()),
         (TokenType::Dollar, Regex::new(r"^[$][ ]*").unwrap()),
         (TokenType::OpeningBrace, Regex::new(r"^[{][ ]*").unwrap()),
         (TokenType::ClosingBrace, Regex::new(r"^[}][ ]*").unwrap()),
-        (TokenType::Content, Regex::new(r#"(?<name>[^'^"^}^$^{]*)"#).unwrap()),
-    ]);
+        (
+            TokenType::Content,
+            Regex::new(r#"(?<name>[^'^"^}^$^{]*)"#).unwrap(),
+        ),
+    ]
+});
+
+pub fn tokenize(content: &str) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
     let mut cursor: usize = 0;
-    let mut index: usize = keywords.len();
+    let mut index: usize = KEYWORDS.len();
 
     let mut string_starter = false;
     let mut iterator = content.trim();
-    
+
     while iterator != "" {
         iterator = &iterator.trim()[cursor..].trim();
         if iterator == "" {
             break;
         }
         if string_starter {
-            for (kind, regex) in &string_checkers[0..] {
-                let capture = capture(regex.clone(), iterator, *kind).unwrap();
+            for (kind, regex) in &*STRING_CHECKERS {
+                let capture = capture(&regex, iterator, *kind).unwrap();
                 if capture != "" {
                     let value = capture;
                     let mut extra_spaces = 0;
-                    match kind {
-                        TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
+                    match *kind {
+                        TokenType::SingleQuote
+                        | TokenType::DoubleQuote
+                        | TokenType::CommandQuote
+                        | TokenType::FormattedQuote => {
                             string_starter = false;
                         }
                         TokenType::ClosingBrace => {
-                            extra_spaces = capture.len() -1;
+                            extra_spaces = capture.len() - 1;
                         }
                         _ => {}
                     }
-                    cursor = capture.len(); 
-                    let token = Token{kind: kind.clone(), value};
+                    cursor = capture.len();
+                    let token = Token { kind: *kind, value };
                     tokens.push(token);
                     for _i in 0..extra_spaces {
-                        tokens.push(Token{kind: TokenType::Content, value: " "});
+                        tokens.push(Token {
+                            kind: TokenType::Content,
+                            value: " ",
+                        });
                     }
                     break;
                 }
             }
         } else {
-            for (kind, regex) in &keywords[0..] {
-                let capture = capture(regex.clone(), iterator, *kind).unwrap();
+            for (kind, regex) in &*KEYWORDS {
+                let capture = capture(&regex, iterator, *kind).unwrap();
                 if capture != "" {
                     let value = capture.trim();
-                    match kind {
+                    match *kind {
                         TokenType::Comment | TokenType::Newline => {
-                            tokens.push(Token{kind: TokenType::Newline, value: "\n"});
+                            tokens.push(Token {
+                                kind: TokenType::Newline,
+                                value: "\n",
+                            });
+                            return tokens;
                         }
-                        TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
+                        TokenType::SingleQuote
+                        | TokenType::DoubleQuote
+                        | TokenType::CommandQuote
+                        | TokenType::FormattedQuote => {
                             string_starter = true;
                         }
                         _ => {}
                     }
-                    cursor = capture.len(); 
-                    let token = Token{kind: kind.clone(), value};
+                    cursor = capture.len();
+                    let token = Token { kind: *kind, value };
                     tokens.push(token);
-                    index = keywords.len();
+                    index = KEYWORDS.len();
                     break;
-                } else {
-                  index -= 1  
                 }
+                index -= 1
             }
         }
         if index <= 0 {
@@ -168,12 +201,17 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         }
     }
 
-    tokens.push(Token{kind: TokenType::Newline, value: "\n"});
+    tokens.push(Token {
+        kind: TokenType::Newline,
+        value: "\n",
+    });
     return tokens;
 }
 
-pub fn capture<'a>(regex:  Regex, content: &'a str, kind: TokenType) -> Option<&'a str> {
-    let Some(captures) = regex.captures(content) else { return Some(""); };
+pub fn capture<'a>(regex: &'a Regex, content: &'a str, kind: TokenType) -> Option<&'a str> {
+    let Some(captures) = regex.captures(content) else {
+        return Some("");
+    };
     match kind {
         TokenType::Name => {
             return Some(captures.name("name").unwrap().as_str());

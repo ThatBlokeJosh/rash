@@ -40,12 +40,11 @@ impl DataStore {
 }
 
 impl<'a> Expr<'a> {
-    pub fn unwrap(self) -> Option<DataType<'a>> {
+    pub fn expand(&self) -> Option<DataType<'a>> {
         match self {
             Expr::Literal(expr) => {
-                let kind = expr.clone();
                 match expr {
-                    Literal::Variable(x) | Literal::Int(x) | Literal::String(x) | Literal::Bool(x) => {return Some(DataType{value: x, kind, store: DataStore::new(None, None)});} 
+                    Literal::Variable(x) | Literal::Int(x) | Literal::String(x) | Literal::Bool(x) => {return Some(DataType{value: x, kind: *expr, store: DataStore::new(None, None)});} 
                     _ => {return None;}
                 }
             },
