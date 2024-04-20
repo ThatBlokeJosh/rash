@@ -1,7 +1,4 @@
-use regex::{Captures, Regex};
-use std::error::Error;
-use std::process::Command;
-use std::io::{self, Cursor, Write};
+use regex::Regex;
 
 #[derive(Debug, Clone, Copy)]
 pub enum TokenType {
@@ -49,9 +46,9 @@ pub enum TokenType {
 }
 
 #[derive(Debug, Clone)]
-pub struct Token<> {
+pub struct Token<'a> {
     pub kind: TokenType,
-    pub value: String,
+    pub value: &'a str,
 }
 
 pub fn tokenize(content: &str) -> Vec<Token> {
@@ -120,9 +117,9 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         }
         if string_starter {
             for (kind, regex) in &string_checkers {
-                let capture = capture(&regex, iterator, *kind);
-                if capture != "".to_string() {
-                    let value = capture.to_string();
+                let capture = capture(&regex, iterator, *kind).unwrap();
+                if capture != "" {
+                    let value = capture;
                     let mut extra_spaces = 0;
                     match *kind {
                         TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
@@ -137,19 +134,19 @@ pub fn tokenize(content: &str) -> Vec<Token> {
                     let token = Token{kind: *kind, value};
                     tokens.push(token);
                     for _i in 0..extra_spaces {
-                        tokens.push(Token{kind: TokenType::Content, value: " ".to_string()});
+                        tokens.push(Token{kind: TokenType::Content, value: " "});
                     }
                     break;
                 }
             }
         } else {
             for (kind, regex) in &keywords {
-                let capture = capture(&regex, iterator, *kind);
-                if capture != "".to_string() {
-                    let value = capture.trim().to_string();
+                let capture = capture(&regex, iterator, *kind).unwrap();
+                if capture != "" {
+                    let value = capture.trim();
                     match *kind {
                         TokenType::Comment | TokenType::Newline => {
-                            tokens.push(Token{kind: TokenType::Newline, value: "\n".to_string()});
+                            tokens.push(Token{kind: TokenType::Newline, value: "\n"});
                             return tokens;
                         }
                         TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
@@ -172,18 +169,18 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         }
     }
 
-    tokens.push(Token{kind: TokenType::Newline, value: "\n".to_string()});
+    tokens.push(Token{kind: TokenType::Newline, value: "\n"});
     return tokens;
 }
 
-pub fn capture(regex: &Regex, content: &str, kind: TokenType) ->  String {
-    let Some(captures) = regex.captures(content) else { return "".to_string(); };
+pub fn capture<'a>(regex: &Regex, content: &'a str, kind: TokenType) -> Option<&'a str> {
+    let Some(captures) = regex.captures(content) else { return Some(""); };
     match kind {
         TokenType::Name => {
-            return captures["name"].to_string();
+            return Some(&captures["name"]);
         }
         _ => {
-            return captures[0].to_string();
+            return Some(&captures[0]);
         }
     }
 }

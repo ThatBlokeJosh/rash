@@ -1,21 +1,21 @@
 use crate::lexer::{Token, TokenType};
 
 #[derive(Debug, Clone)]
-pub enum Expr {
-    Unary(UnaryExpr),
-    Binary(BinaryExpr),
-    Block(Block),
-    Literal(Literal),
-    Function(Function),
-    Definition(Definition),
+pub enum Expr<'a> {
+    Unary(UnaryExpr<'a>),
+    Binary(BinaryExpr<'a>),
+    Block(Block<'a>),
+    Literal(Literal<'a>),
+    Function(Function<'a>),
+    Definition(Definition<'a>),
     Nil,
 }
 
 
 #[derive(Debug, Clone)]
-pub struct DataType {
-    pub value: String,
-    pub kind: Literal,
+pub struct DataType<'a> {
+    pub value: &'a str,
+    pub kind: Literal<'a>,
     pub store: DataStore,
 }
 
@@ -26,9 +26,9 @@ pub struct DataStore {
     pub bool: Option<bool>,
 }
 
-impl DataType {
+impl DataType<'_> {
     pub fn new() -> Self {
-        return DataType{kind: Literal::Nil, value: "".to_string(), store: DataStore::new(None, None)};
+        return DataType{kind: Literal::Nil, value: "", store: DataStore::new(None, None)};
     }
 }
 
@@ -39,13 +39,13 @@ impl DataStore {
     }
 }
 
-impl Expr {
-    pub fn unwrap(self) -> Option<DataType> {
+impl<'a> Expr<'a> {
+    pub fn unwrap(self) -> Option<DataType<'a>> {
         match self {
             Expr::Literal(expr) => {
                 let kind = expr.clone();
                 match expr {
-                    Literal::Variable(x) | Literal::Int(x) | Literal::String(x) | Literal::Bool(x) | Literal::Float(x) => {return Some(DataType{value: x, kind, store: DataStore::new(None, None)});} 
+                    Literal::Variable(x) | Literal::Int(x) | Literal::String(x) | Literal::Bool(x) => {return Some(DataType{value: x, kind, store: DataStore::new(None, None)});} 
                     _ => {return None;}
                 }
             },
@@ -70,17 +70,17 @@ pub enum Operator {
 }
 
 #[derive(Debug, Clone)]
-pub struct BinaryExpr {
+pub struct BinaryExpr<'a> {
     pub operator: Operator,
-    pub left: Box<Expr>,
-    pub right: Box<Expr>,
+    pub left: Box<Expr<'a>>,
+    pub right: Box<Expr<'a>>,
 }
 
 
 #[derive(Debug, Clone)]
-pub struct UnaryExpr {
+pub struct UnaryExpr<'a> {
     pub operator: Operator,
-    pub value: Box<Expr>,
+    pub value: Box<Expr<'a>>,
 }
 
 
@@ -96,13 +96,13 @@ pub enum BlockType {
 }
 
 #[derive(Debug, Clone)]
-pub struct Block {
+pub struct Block<'a> {
     pub kind: BlockType,
-    pub conditions: Vec<Box<Expr>>,
-    pub block: Vec<Box<Expr>>,
+    pub conditions: Vec<Box<Expr<'a>>>,
+    pub block: Vec<Box<Expr<'a>>>,
 }
 
-impl Block {
+impl Block<'_> {
     pub fn new() -> Self {
         return Block{kind: BlockType::Nil, conditions: Vec::new(), block: Vec::new()};
     }  
@@ -116,34 +116,33 @@ pub enum FunctionType {
 }
 
 #[derive(Debug, Clone)]
-pub struct Function {
+pub struct Function<'a> {
     pub kind: FunctionType,
-    pub arguments: Vec<Box<Expr>>,
-    pub name: String,
+    pub arguments: Vec<Box<Expr<'a>>>,
+    pub name: &'a str,
 }
 
 
 #[derive(Debug, Clone)]
-pub struct Definition {
-    pub name: String,
-    pub arguments: Vec<Box<Expr>>,
-    pub block: Vec<Box<Expr>>,
-    pub returns: Option<DataType>,
+pub struct Definition<'a> {
+    pub name: &'a str,
+    pub arguments: Vec<Box<Expr<'a>>>,
+    pub block: Vec<Box<Expr<'a>>>,
+    pub returns: Option<DataType<'a>>,
 }
 
-impl Definition {
+impl Definition<'_> {
     pub fn new() -> Self {
-        return Definition{name: "".to_string(), arguments: Vec::new(), block: Vec::new(), returns: None};
+        return Definition{name: "", arguments: Vec::new(), block: Vec::new(), returns: None};
     }  
 }
 
 #[derive(Debug, Clone)]
-pub enum Literal {
-    String(String),
-    Variable(String),
-    Int(String),
-    Float(String),
-    Bool(String),
+pub enum Literal<'a> {
+    String(&'a str),
+    Variable(&'a str),
+    Int(&'a str),
+    Bool(&'a str),
     Nil,
 }
 
@@ -191,7 +190,7 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
             TokenType::Name | TokenType::Content => {
                 let j: usize;
                 let expr: Expr;
-                (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                (expr, j) = parse_variable(tokens[i+1..].to_vec(), value);
                 tree.push(Box::new(expr));
                 i += j;
             }
@@ -218,17 +217,17 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                 i += j;
             }
             TokenType::Number => {
-                let expr = Expr::Literal(Literal::Int(value.to_string()));
+                let expr = Expr::Literal(Literal::Int(value));
                 tree.push(Box::new(expr));
             }
             TokenType::Bool => {
-                let expr = Expr::Literal(Literal::Bool(value.to_string()));
+                let expr = Expr::Literal(Literal::Bool(value));
                 tree.push(Box::new(expr));
             }
             TokenType::Print => {
                 let j: usize;
                 let expr: Expr;
-                (expr, j) = parse_function(tokens[i..].to_vec(), "print".to_string());
+                (expr, j) = parse_function(tokens[i..].to_vec(), "print");
                 tree.push(Box::new(expr));
                 i += j;
             }
@@ -275,7 +274,7 @@ pub fn parse_string(tokens: Vec<Token>) -> (Expr, usize) {
     if block.block.len() > 0 {
         return (Expr::Block(block), i);
     }
-    return (Expr::Literal(Literal::String(content)), i);
+    return (Expr::Literal(Literal::String(content.as_str())), i);
 }
 
 pub fn parse_fstring(tokens: Vec<Token>) -> (Expr, usize) {
@@ -288,7 +287,7 @@ pub fn parse_fstring(tokens: Vec<Token>) -> (Expr, usize) {
     let mut block: Block = Block{kind: block_kind, block: Vec::new(), conditions: Vec::new()};
     let mut i:usize = 1;
     while i < tokens.len() { 
-        let value = (&tokens[i].value).to_string();
+        let value = &tokens[i].value;
         match tokens[i].kind {
             TokenType::Dollar => {
                 i += parse_any(tokens[i..].to_vec(), &mut block.block, false);
@@ -306,7 +305,7 @@ pub fn parse_fstring(tokens: Vec<Token>) -> (Expr, usize) {
     return (Expr::Block(block), i);
 }
 
-pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
+pub fn parse_variable<'a>(tokens: Vec<Token>, name: &str) -> (Expr<'a>, usize) {
     let mut operator: Operator = Operator::Nil;
     match tokens[0].kind {
         TokenType::Plus=>{operator = Operator::Plus},
@@ -329,7 +328,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
     let mut expr: Expr = Expr::Nil; 
     let mut i:usize = 1;
     while i < tokens.len() { 
-        let value = (&tokens[i].value).to_string();
+        let value = &tokens[i].value;
         match tokens[i].kind {
             TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace | TokenType::ClosingBracket => {
                 break;
@@ -370,7 +369,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
     return (Expr::Binary(bin_expr), i);
 }
 
-pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
+pub fn parse_bin<'a>(tokens: Vec<Token>, left: Expr) -> (Expr<'a>, usize) {
     let mut operator: Operator = Operator::Nil;
     match tokens[0].kind {
         TokenType::Plus=>{operator = Operator::Plus},
@@ -387,7 +386,7 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
     let mut bin = BinaryExpr{operator, left: Box::new(left), right: Box::new(Expr::Nil)};
     let mut i:usize = 1;
     while i < tokens.len() { 
-        let value = (&tokens[i].value).to_string();
+        let value = &tokens[i].value;
         match tokens[i].kind {
             TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace => {
                 break;
@@ -439,7 +438,7 @@ pub fn parse_un(tokens: Vec<Token>) -> (Expr, usize) {
     let mut un = UnaryExpr{operator, value: Box::new(Expr::Nil)};
     let mut i:usize = 1;
     while i < tokens.len() { 
-        let value = (&tokens[i].value).to_string();
+        let value = &tokens[i].value;
         match tokens[i].kind {
             TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace => {
                 break;
@@ -487,7 +486,7 @@ pub fn parse_block(tokens: Vec<Token>) -> (Expr, usize) {
 }
 
 
-pub fn parse_function(tokens: Vec<Token>, name: String) -> (Expr, usize) {
+pub fn parse_function<'a>(tokens: Vec<Token>, name: &str) -> (Expr<'a>, usize) {
     let mut function_kind: FunctionType = FunctionType::Defined;
     match tokens[0].kind {
         TokenType::Print=>{function_kind = FunctionType::Print},
@@ -500,16 +499,16 @@ pub fn parse_function(tokens: Vec<Token>, name: String) -> (Expr, usize) {
 }
 
 pub fn parse_definition(tokens: Vec<Token>) -> (Expr, usize) {
-    let mut name = "".to_string();
+    let mut name = "";
     match tokens[0].kind {
-        TokenType::Name=>{name = tokens[0].value.clone()},
+        TokenType::Name=>{name = tokens[0].value},
         _ => {}, 
     }
     let mut func = Definition::new();
     func.name = name;
     let mut i: usize = 1;
     while i < tokens.len() { 
-        let value = (&tokens[i].value).to_string();
+        let value = &tokens[i].value;
         match tokens[i].kind {
             TokenType::ClosingBracket => {
                 i += 1;
@@ -518,7 +517,7 @@ pub fn parse_definition(tokens: Vec<Token>) -> (Expr, usize) {
             TokenType::Name => {
                 let j: usize;
                 let expr: Expr;
-                (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                (expr, j) = parse_variable(tokens[i+1..].to_vec(), value);
                 func.arguments.push(Box::new(expr));
                 i += j;
             }

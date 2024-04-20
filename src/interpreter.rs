@@ -3,8 +3,8 @@ use std::process::Command;
 
 use crate::parser::{BinaryExpr, Block, BlockType, DataType, Expr, Function, FunctionType, Literal, Operator, UnaryExpr, DataStore, Definition};
 
-pub fn interpret(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) {
-    let mut scope: HashMap<String, DataType> = HashMap::new();
+pub fn interpret<'a>(tree: &Vec<Box<Expr<'a>>>, scopes: &mut Vec<HashMap<&'a str, DataType<'a>>>, functions: &mut HashMap<&'a str, Definition<'a>>) {
+    let mut scope: HashMap<&str, DataType> = HashMap::new();
     scopes.push(scope.clone());
     let mut if_status = false;
     let mut if_started = false;
@@ -25,18 +25,18 @@ pub fn interpret(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataTyp
             Expr::Block(expr) => {
                 match expr.kind {
                     BlockType::If => {
-                        if_status = run_if(expr.clone(), scopes, functions).expect("Error");
+                        if_status = run_if(&expr, scopes, functions).expect("Error");
                         if_started = true;
                     }
                     BlockType::ElseIf => {
                         if if_started && !if_status {
-                            if_status = run_if(expr.clone(), scopes, functions).expect("Error");
+                            if_status = run_if(&expr, scopes, functions).expect("Error");
                         }
                     }
 
                     BlockType::Else => {
                         if if_started && !if_status {
-                            run_else(expr.clone(), scopes, functions).expect("Error");
+                            run_else(&expr, scopes, functions).expect("Error");
                         }
                         if_status = false;
                         if_started = false;
@@ -85,14 +85,14 @@ pub fn interpret(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataTyp
     scopes.pop();
 }
 
-pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType>>) -> Option<DataType> {
+pub fn calculate_bexpr<'a>(in_expr: &Expr<'a>, scopes: &mut Vec<HashMap<&'a str, DataType<'a>>>) -> Option<DataType<'a>> {
     let expr: BinaryExpr;
     match in_expr {
         Expr::Binary(x) => {expr = x.clone();}
         Expr::Literal(lit) => { 
             match lit {
                 Literal::Variable(x) => {
-                    return get_from_scope(scopes, x.to_string());
+                    return get_from_scope(scopes, x);
                 }
                 Literal::Int(x) => {
                     let mut value = in_expr.clone().unwrap().unwrap();
@@ -153,7 +153,7 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
 }
 
 
-pub fn calculate_unexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType>>) -> Option<DataType> {
+pub fn calculate_unexpr<'a>(in_expr: &Expr<'a>, scopes: &mut Vec<HashMap<&'a str, DataType<'a>>>) -> Option<DataType<'a>> {
     let expr: UnaryExpr;
     match in_expr {
         Expr::Unary(x) => { expr = x.clone();}
@@ -173,7 +173,7 @@ pub fn calculate_unexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataTyp
         }
         _ => {}
     }
-    let one: DataType = DataType{value: "1".to_string(), kind: Literal::Int("".to_string()), store: DataStore::new(Some(1), None)};
+    let one: DataType = DataType{value: "1", kind: Literal::Int(""), store: DataStore::new(Some(1), None)};
     match expr.operator {
         Operator::Plus => {
             return add(value, one);
@@ -186,35 +186,38 @@ pub fn calculate_unexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataTyp
     return None;
 }
 
-pub fn format_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) -> Option<DataType> {
-    let mut value: DataType = DataType { value: "".to_string(), kind: Literal::String("".to_string()), store: DataStore::new(None, None) };
+pub fn format_string<'a>(expr: &Block<'a>, scopes: &mut Vec<HashMap<&'a str, DataType<'a>>>) -> Option<DataType<'a>> {
+    let mut value: DataType = DataType { value: "", kind: Literal::String(""), store: DataStore::new(None, None) };
+    let mut to_concat: String = String::from("");
     for content in expr.block.clone() {
         match *content {
             Expr::Literal(x) => {
                 match x {
                     Literal::Variable(y) => {
-                        value.value += &get_from_scope(scopes, y.to_string())?.value;
+                        to_concat += &get_from_scope(scopes, y)?.value;
                     }
-                    Literal::String(y) => {value.value += &y}
+                    Literal::String(y) => {to_concat += &y}
                     _ => {}
                 }
             }
             _ => {} 
         }
     }
+    // value.value = to_concat.as_str();
     return Some(value);
 }
 
-pub fn shell_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, print_out: bool) -> Option<DataType> {
-    let mut value: DataType = DataType { value: "".to_string(), kind: Literal::String("".to_string()), store: DataStore::new(None, None)};
+pub fn shell_string<'a>(expr: &Block<'a>, scopes: &mut Vec<HashMap<&'a str, DataType<'a>>>, print_out: bool) -> Option<DataType<'a>> {
+    let mut value: DataType = DataType { value: "", kind: Literal::String(""), store: DataStore::new(None, None)};
+    let mut to_concat: String = String::from("");
     for content in expr.block.clone() {
         match *content {
             Expr::Literal(x) => {
                 match x {
                     Literal::Variable(y) => {
-                        value.value += &get_from_scope(scopes, y.to_string())?.value;
+                        to_concat += &get_from_scope(scopes, y)?.value;
                     }
-                    Literal::String(y) => {value.value += &y}
+                    Literal::String(y) => {to_concat += &y}
                     _ => {}
                 }
             }
@@ -234,15 +237,15 @@ pub fn shell_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, p
             .expect("failed to execute process")
     };
     let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
-    let stdout = DataType{value: stdout_str.clone(), kind: Literal::String(stdout_str.clone()), store: DataStore::new(None, None)};
+    let stdout = DataType{value: "", kind: Literal::String(""), store: DataStore::new(None, None)};
     if print_out {
         print!("{}", stdout.value);
     }
     return Some(stdout);
 }
 
-pub fn run_function<'a>(call: &mut Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), &'a str> {
-    let mut scope: HashMap<String, DataType> = HashMap::new();
+pub fn run_function<'a>(call: &mut Function<'a>, scopes: &mut Vec<HashMap<&'a str, DataType<'a>>>, functions: &mut HashMap<&'a str, Definition<'a>>) -> Result<(), &'a str> {
+    let mut scope: HashMap<&str, DataType> = HashMap::new();
     let expr = functions.get(&call.name).unwrap(); 
     if expr.arguments.len() != call.arguments.len() {
         return Err("Invalid ammount of arguments to this function");
@@ -259,12 +262,12 @@ pub fn run_function<'a>(call: &mut Function, scopes: &mut Vec<HashMap<String, Da
     return Ok(());
 }
 
-pub fn run_if(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<bool, String> {
+pub fn run_if<'a>(expr: &Block<'a>, scopes: &mut Vec<HashMap<&'a str, DataType<'a>>>, functions: &mut HashMap<&'a str, Definition<'a>>) -> Result<bool, &'a str> {
     if expr.conditions.len() != 1 {
-       return Err("Conditions to this statement are invalid".to_string()); 
+       return Err("Conditions to this statement are invalid"); 
     }
 
-    let condition_str = calculate_bexpr(&expr.conditions[0].clone(), scopes).unwrap().value;
+    let condition_str = calculate_bexpr(&expr.conditions[0], scopes).unwrap().value;
     let mut condition: bool = false;
     if condition_str == "true".to_string() {
         condition = true
@@ -277,12 +280,12 @@ pub fn run_if(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>, func
     return Ok(condition);
 }
 
-pub fn run_else(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
+pub fn run_else<'a>(expr: &Block<'a>, scopes: &mut Vec<HashMap<&'a str, DataType<'a>>>, functions: &mut HashMap<&'a str, Definition<'a>>) -> Result<(), String> {
     interpret(&expr.block, scopes, functions);
     return Ok(());
 }
 
-pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
+pub fn run_for<'a>(expr: &Block<'a>, scopes: &mut Vec<HashMap<&'a str, DataType<'a>>>, functions: &mut HashMap<&'a str, Definition<'a>>) -> Result<(), &'a str> {
     let mut condition;
     if expr.conditions.len() == 1 {
         condition = calculate_bexpr(&expr.conditions[0], scopes).unwrap().store.bool.unwrap();
@@ -294,11 +297,11 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
             }
         }
     } else if expr.conditions.len() != 3 {
-       return Err("Conditions to this statement are invalid".to_string()); 
+       return Err("Conditions to this statement are invalid"); 
     } 
 
-    let mut scope: HashMap<String, DataType> = HashMap::new();
-    let mut iterator_key: String = "".to_string();
+    let mut scope: HashMap<&str, DataType> = HashMap::new();
+    let mut iterator_key: &'a str = "";
     let iterator_updater = &expr.conditions[2];
 
     match *expr.conditions[0].clone()  {
@@ -307,7 +310,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
                 Operator::Equals => {
                     iterator_key = name_expr.left.unwrap().expect("Where did the name go").value;
                     let output = calculate_bexpr(&name_expr.right, scopes);
-                    scope.insert(iterator_key.clone(), output.unwrap());
+                    scope.insert(iterator_key, output.unwrap());
                     scopes.push(scope.clone());
                 }
                 _ => {}
@@ -322,7 +325,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
         interpret(&expr.block, scopes, functions);
 
         let output = calculate_unexpr(&iterator_updater, scopes).unwrap();
-        scope.insert(iterator_key.clone(), output);
+        scope.insert(iterator_key, output);
         scopes.pop();
         scopes.push(scope.clone());
 
@@ -332,17 +335,16 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
     return Ok(());
 }
 
-pub fn run_print(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>) {
+pub fn run_print<'a>(expr: &Function<'a>, scopes: &mut Vec<HashMap<&'a str, DataType<'a>>>) {
     for arg in &expr.arguments {
         let output = calculate_bexpr(&arg, scopes); 
-        print!("{} ", output.unwrap().value)
+        print!("{}\n", output.unwrap().value)
     }
-    println!();
 }
 
-pub fn get_from_scope(scopes: &mut Vec<HashMap<String, DataType>>, name: String) -> Option<DataType> {
+pub fn get_from_scope<'a>(scopes: &mut Vec<HashMap<&'a str, DataType<'a>>>, name: &'a str) -> Option<DataType<'a>> {
     for scope in scopes {
-        match scope.get(name.as_str()) {
+        match scope.get(name) {
             Some(x) => {
                 return Some(x.clone());
             }
@@ -352,48 +354,48 @@ pub fn get_from_scope(scopes: &mut Vec<HashMap<String, DataType>>, name: String)
     return None;
 }
 
-pub fn add(left: DataType, right: DataType) -> Option<DataType> {
+pub fn add<'a>(left: DataType<'a>, right: DataType<'a>) -> Option<DataType<'a>> {
     match (left.kind, right.kind) {
         (Literal::Int(..), Literal::Int(..)) => {
             let z:i32 = left.store.integer.unwrap() + right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Int("".to_string()), store: DataStore::new(Some(z), None)});
+            return Some(DataType{value: "", kind: Literal::Int(""), store: DataStore::new(Some(z), None)});
         }
-        (Literal::String(x_str), Literal::String(y_str)) => {
-            let z:String = (x_str + y_str.as_str()).to_string();
-            return Some(DataType{value: z, kind: Literal::String("".to_string()), store: DataStore::new(None, None)});
-        }
+        // (Literal::String(x_str), Literal::String(y_str)) => {
+        //     let z:String = (x_str + y_str).to_string();
+        //     return Some(DataType{value: z, kind: Literal::String("".to_string()), store: DataStore::new(None, None)});
+        // }
         _ => {return None;}
     }
 }
 
 
-pub fn subtract(left: DataType, right: DataType) -> Option<DataType> {
+pub fn subtract<'a>(left: DataType<'a>, right: DataType<'a>) -> Option<DataType<'a>> {
     match (left.kind, right.kind) {
         (Literal::Int(..), Literal::Int(..)) => {
             let z:i32 = left.store.integer.unwrap() - right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Int("".to_string()), store: DataStore::new(Some(z), None)});
+            return Some(DataType{value: "", kind: Literal::Int(""), store: DataStore::new(Some(z), None)});
         }
         _ => {return None;}
     }
 }
 
 
-pub fn multiply(left: DataType, right: DataType) -> Option<DataType> {
+pub fn multiply<'a>(left: DataType<'a>, right: DataType<'a>) -> Option<DataType<'a>> {
     match (left.kind, right.kind) {
         (Literal::Int(..), Literal::Int(..)) => {
             let z:i32 = left.store.integer.unwrap() * right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Int("".to_string()), store: DataStore::new(Some(z), None)});
+            return Some(DataType{value: "", kind: Literal::Int(""), store: DataStore::new(Some(z), None)});
         }
         _ => {return None;}
     }
 }
 
 
-pub fn divide(left: DataType, right: DataType) -> Option<DataType> {
+pub fn divide<'a>(left: DataType<'a>, right: DataType<'a>) -> Option<DataType<'a>> {
     match (left.kind, right.kind) {
         (Literal::Int(..), Literal::Int(..)) => {
             let z:i32 = left.store.integer.unwrap() / right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Int("".to_string()), store: DataStore::new(Some(z), None)});
+            return Some(DataType{value: "", kind: Literal::Int(""), store: DataStore::new(Some(z), None)});
         }
         _ => {return None;}
     }
@@ -402,33 +404,33 @@ pub fn divide(left: DataType, right: DataType) -> Option<DataType> {
 
 
 
-pub fn equals(left: DataType, right: DataType) -> Option<DataType> {
+pub fn equals<'a>(left: DataType<'a>, right: DataType<'a>) -> Option<DataType<'a>> {
     match (left.kind, right.kind) {
         (Literal::Int(..), Literal::Int(..)) => {
             let z:bool = left.store.integer.unwrap() == right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+            return Some(DataType{value: "", kind: Literal::Bool(""), store: DataStore::new(None, Some(z))});
         }
         _ => {return None;}
     }
 }
 
 
-pub fn lesser(left: DataType, right: DataType) -> Option<DataType> {
+pub fn lesser<'a>(left: DataType<'a>, right: DataType<'a>) -> Option<DataType<'a>> {
     match (left.kind, right.kind) {
         (Literal::Int(..), Literal::Int(..)) => {
             let z:bool = left.store.integer.unwrap() < right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+            return Some(DataType{value: "", kind: Literal::Bool(""), store: DataStore::new(None, Some(z))});
         }
         _ => {return None;}
     }
 }
 
 
-pub fn greater(left: DataType, right: DataType) -> Option<DataType> {
+pub fn greater<'a>(left: DataType<'a>, right: DataType<'a>) -> Option<DataType<'a>> {
     match (left.kind, right.kind) {
         (Literal::Int(..), Literal::Int(..)) => {
             let z:bool = left.store.integer.unwrap() > right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+            return Some(DataType{value: "", kind: Literal::Bool(""), store: DataStore::new(None, Some(z))});
         }
         _ => {return None;}
     }

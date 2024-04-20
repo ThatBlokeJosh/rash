@@ -37,8 +37,8 @@ fn main() -> std::io::Result<()> {
     let tree = parse(tokens);
     // println!("Tree: {:?} Length: {:?}", tree, tree.len());
 
-    let mut scopes: Vec<HashMap<String, DataType>> = Vec::new();
-    let mut functions: HashMap<String, Definition> = HashMap::new();
+    let mut scopes: Vec<HashMap<&str, DataType>> = Vec::new();
+    let mut functions: HashMap<&str, Definition> = HashMap::new();
     interpret(&tree, &mut scopes, &mut functions);
 
     return Ok(());
