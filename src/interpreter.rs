@@ -77,7 +77,7 @@ pub fn interpret<'a>(tree: &Vec<Box<Expr<'a>>>, scopes: &mut Vec<HashMap<&'a str
             Expr::Definition(expr) => {
                 if_status = false;
                 if_started = false;
-                functions.insert(expr.name.clone(), expr);
+                functions.insert(expr.name, expr);
             }
             _ => {},
         }
@@ -338,7 +338,7 @@ pub fn run_for<'a>(expr: &Block<'a>, scopes: &mut Vec<HashMap<&'a str, DataType<
 pub fn run_print<'a>(expr: &Function<'a>, scopes: &mut Vec<HashMap<&'a str, DataType<'a>>>) {
     for arg in &expr.arguments {
         let output = calculate_bexpr(&arg, scopes); 
-        print!("{}\n", output.unwrap().value)
+        print!("{}\n", output.unwrap().store.integer.unwrap().to_string())
     }
 }
 

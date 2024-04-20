@@ -116,12 +116,12 @@ pub fn tokenize(content: &str) -> Vec<Token> {
             break;
         }
         if string_starter {
-            for (kind, regex) in &string_checkers {
-                let capture = capture(&regex, iterator, *kind).unwrap();
+            for (kind, regex) in &string_checkers[0..] {
+                let capture = capture(regex.clone(), iterator, *kind).unwrap();
                 if capture != "" {
                     let value = capture;
                     let mut extra_spaces = 0;
-                    match *kind {
+                    match kind {
                         TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
                             string_starter = false;
                         }
@@ -131,7 +131,7 @@ pub fn tokenize(content: &str) -> Vec<Token> {
                         _ => {}
                     }
                     cursor = capture.len(); 
-                    let token = Token{kind: *kind, value};
+                    let token = Token{kind: kind.clone(), value};
                     tokens.push(token);
                     for _i in 0..extra_spaces {
                         tokens.push(Token{kind: TokenType::Content, value: " "});
@@ -140,14 +140,13 @@ pub fn tokenize(content: &str) -> Vec<Token> {
                 }
             }
         } else {
-            for (kind, regex) in &keywords {
-                let capture = capture(&regex, iterator, *kind).unwrap();
+            for (kind, regex) in &keywords[0..] {
+                let capture = capture(regex.clone(), iterator, *kind).unwrap();
                 if capture != "" {
                     let value = capture.trim();
-                    match *kind {
+                    match kind {
                         TokenType::Comment | TokenType::Newline => {
                             tokens.push(Token{kind: TokenType::Newline, value: "\n"});
-                            return tokens;
                         }
                         TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
                             string_starter = true;
@@ -155,7 +154,7 @@ pub fn tokenize(content: &str) -> Vec<Token> {
                         _ => {}
                     }
                     cursor = capture.len(); 
-                    let token = Token{kind: *kind, value};
+                    let token = Token{kind: kind.clone(), value};
                     tokens.push(token);
                     index = keywords.len();
                     break;
@@ -173,14 +172,14 @@ pub fn tokenize(content: &str) -> Vec<Token> {
     return tokens;
 }
 
-pub fn capture<'a>(regex: &Regex, content: &'a str, kind: TokenType) -> Option<&'a str> {
+pub fn capture<'a>(regex:  Regex, content: &'a str, kind: TokenType) -> Option<&'a str> {
     let Some(captures) = regex.captures(content) else { return Some(""); };
     match kind {
         TokenType::Name => {
-            return Some(&captures["name"]);
+            return Some(captures.name("name").unwrap().as_str());
         }
         _ => {
-            return Some(&captures[0]);
+            return Some(captures.get(0).unwrap().as_str());
         }
     }
 }

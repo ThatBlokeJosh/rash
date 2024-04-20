@@ -157,7 +157,7 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Box<Expr>> {
 }
 
 
-pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool) -> usize {
+pub fn parse_any<'a>(tokens: Vec<Token<'a>>, tree: &mut Vec<Box<Expr<'a>>>, conditions: bool) -> usize {
     let mut i:usize = 0;
     while i < tokens.len() { 
         let value = &tokens[i].value;
@@ -245,7 +245,7 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
     return i;
 }
 
-pub fn parse_string(tokens: Vec<Token>) -> (Expr, usize) {
+pub fn parse_string<'a>(tokens: Vec<Token<'a>>) -> (Expr, usize) {
     let mut block_kind: BlockType = BlockType::Nil;
     match tokens[0].kind {
         TokenType::FormattedQuote => {block_kind = BlockType::FormatedString}
@@ -274,7 +274,7 @@ pub fn parse_string(tokens: Vec<Token>) -> (Expr, usize) {
     if block.block.len() > 0 {
         return (Expr::Block(block), i);
     }
-    return (Expr::Literal(Literal::String(content.as_str())), i);
+    return (Expr::Literal(Literal::String("")), i);
 }
 
 pub fn parse_fstring(tokens: Vec<Token>) -> (Expr, usize) {
@@ -305,7 +305,7 @@ pub fn parse_fstring(tokens: Vec<Token>) -> (Expr, usize) {
     return (Expr::Block(block), i);
 }
 
-pub fn parse_variable<'a>(tokens: Vec<Token>, name: &str) -> (Expr<'a>, usize) {
+pub fn parse_variable<'a>(tokens: Vec<Token<'a>>, name: &'a str) -> (Expr<'a>, usize) {
     let mut operator: Operator = Operator::Nil;
     match tokens[0].kind {
         TokenType::Plus=>{operator = Operator::Plus},
@@ -369,7 +369,7 @@ pub fn parse_variable<'a>(tokens: Vec<Token>, name: &str) -> (Expr<'a>, usize) {
     return (Expr::Binary(bin_expr), i);
 }
 
-pub fn parse_bin<'a>(tokens: Vec<Token>, left: Expr) -> (Expr<'a>, usize) {
+pub fn parse_bin<'a>(tokens: Vec<Token<'a>>, left: Expr<'a>) -> (Expr<'a>, usize) {
     let mut operator: Operator = Operator::Nil;
     match tokens[0].kind {
         TokenType::Plus=>{operator = Operator::Plus},
@@ -486,7 +486,7 @@ pub fn parse_block(tokens: Vec<Token>) -> (Expr, usize) {
 }
 
 
-pub fn parse_function<'a>(tokens: Vec<Token>, name: &str) -> (Expr<'a>, usize) {
+pub fn parse_function<'a>(tokens: Vec<Token<'a>>, name: &'a str) -> (Expr<'a>, usize) {
     let mut function_kind: FunctionType = FunctionType::Defined;
     match tokens[0].kind {
         TokenType::Print=>{function_kind = FunctionType::Print},
