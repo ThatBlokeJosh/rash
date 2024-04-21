@@ -67,7 +67,7 @@ static KEYWORDS: Lazy<[(TokenType, Regex); 40]> = Lazy::new(|| {
         (TokenType::Or, Regex::new(r"^[|][|][ ]*").unwrap()),
         (
             TokenType::Float,
-            Regex::new(r"^[-]?([\d| |]*[.])[\d ]*").unwrap(),
+            Regex::new(r"^[-]?([\d ]*[.])[\d ]*").unwrap(),
         ),
         (TokenType::Number, Regex::new(r"^[-]?\d[\d ]*").unwrap()),
         (

@@ -1,16 +1,13 @@
-mod lexer;
-mod parser;
-mod interpreter;
+mod parsing;
+mod runtime;
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 
-use lexer::Token;
-use parser::{DataType, Definition};
-
-use crate::interpreter::interpret;
-use crate::parser::parse;
+use parsing::lexer::{Token, tokenize};
+use parsing::parser::{DataType, Definition, parse};
+use runtime::runtime::run;
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -27,7 +24,7 @@ fn main() -> std::io::Result<()> {
     let mut tokens: Vec<Token> = Vec::new();
 
     for line in script.lines() {
-        let line_tokens = lexer::tokenize(line);
+        let line_tokens = tokenize(line);
         for token in line_tokens {
             tokens.push(token)
         }
@@ -39,7 +36,7 @@ fn main() -> std::io::Result<()> {
 
     let mut scopes: Vec<HashMap<String, DataType>> = Vec::new();
     let mut functions: HashMap<String, Definition> = HashMap::new();
-    interpret(&tree, &mut scopes, &mut functions);
+    run(&tree, &mut scopes, &mut functions);
 
     return Ok(());
 }

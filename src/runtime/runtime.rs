@@ -1,9 +1,10 @@
-use std::{collections::HashMap, i32};
+use std::{collections::HashMap};
 use std::process::Command;
 
-use crate::parser::{BinaryExpr, Block, BlockType, DataType, Expr, Function, FunctionType, Literal, Operator, UnaryExpr, DataStore, Definition};
+use crate::parsing::parser::{BinaryExpr, Block, BlockType, DataType, Expr, Function, FunctionType, Literal, Operator, UnaryExpr, DataStore, Definition};
+use crate::runtime::operations::{*};
 
-pub fn interpret(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) {
+pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) {
     scopes.push(HashMap::new());
     let mut if_status = false;
     let mut if_started = false;
@@ -266,7 +267,7 @@ pub fn run_function<'a>(call: &mut Function, scopes: &mut Vec<HashMap<String, Da
         scope.insert(name.value, output);
     }
     scopes.push(scope);
-    interpret(&expr.block.clone(), scopes, functions);
+    run(&expr.block.clone(), scopes, functions);
     scopes.pop();
     return Ok(());
 }
@@ -279,14 +280,14 @@ pub fn run_if(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functio
     let condition = calculate_bexpr(&expr.conditions[0], scopes).unwrap().store.bool.unwrap();
     
     if condition {
-        interpret(&expr.block, scopes, functions)
+        run(&expr.block, scopes, functions)
     }
 
     return Ok(condition);
 }
 
 pub fn run_else(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
-    interpret(&expr.block, scopes, functions);
+    run(&expr.block, scopes, functions);
     return Ok(());
 }
 
@@ -296,7 +297,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
     if expr.conditions.len() == 1 {
         condition = calculate_bexpr(&expr.conditions[0], scopes).unwrap().store.bool.unwrap();
         while condition {
-            interpret(&expr.block, scopes, functions);
+            run(&expr.block, scopes, functions);
             condition = calculate_bexpr(&expr.conditions[0], scopes).unwrap().store.bool.unwrap();
             if !condition {
                 break;
@@ -330,7 +331,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
     condition = calculate_bexpr(&expr.conditions[1], scopes).unwrap().store.bool.unwrap();
 
     while condition {
-        interpret(&expr.block, scopes, functions);
+        run(&expr.block, scopes, functions);
 
         let output = calculate_unexpr(&iterator_updater, scopes).unwrap();
         set_into_scope(scopes, scopes.len()-1, iterator_key.to_owned(), output);
@@ -367,164 +368,3 @@ pub fn get_from_scope(scopes: &mut Vec<HashMap<String, DataType>>, name: &str) -
     return Err(format!("VARIABLE NOT FOUND: {} wasn't found", name));
 }
 
-pub fn add(left: DataType, right: DataType) -> Option<DataType> {
-    match (left.kind, right.kind) {
-        (Literal::Int(..), Literal::Int(..)) => {
-            let z:i32 = left.store.integer.unwrap() + right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Int("".to_string()), store: DataStore::new(Some(z), None)});
-        }
-        (Literal::String(x_str), Literal::String(y_str)) => {
-            let z:String = (x_str + y_str.as_str()).to_string();
-            return Some(DataType{value: z, kind: Literal::String("".to_string()), store: DataStore::new(None, None)});
-        }
-        _ => {return None;}
-    }
-}
-
-
-pub fn subtract(left: DataType, right: DataType) -> Option<DataType> {
-    match (left.kind, right.kind) {
-        (Literal::Int(..), Literal::Int(..)) => {
-            let z:i32 = left.store.integer.unwrap() - right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Int("".to_string()), store: DataStore::new(Some(z), None)});
-        }
-        _ => {return None;}
-    }
-}
-
-
-pub fn multiply(left: DataType, right: DataType) -> Option<DataType> {
-    match (left.kind, right.kind) {
-        (Literal::Int(..), Literal::Int(..)) => {
-            let z:i32 = left.store.integer.unwrap() * right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Int("".to_string()), store: DataStore::new(Some(z), None)});
-        }
-        _ => {return None;}
-    }
-}
-
-
-pub fn divide(left: DataType, right: DataType) -> Option<DataType> {
-    match (left.kind, right.kind) {
-        (Literal::Int(..), Literal::Int(..)) => {
-            let z:i32 = left.store.integer.unwrap() / right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Int("".to_string()), store: DataStore::new(Some(z), None)});
-        }
-        _ => {return None;}
-    }
-}
-
-
-
-
-pub fn equals(left: DataType, right: DataType) -> Option<DataType> {
-    match (left.kind, right.kind) {
-        (Literal::Int(..), Literal::Int(..)) => {
-            let z:bool = left.store.integer.unwrap() == right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        (Literal::Bool(..), Literal::Bool(..)) => {
-            let z:bool = left.store.bool.unwrap() == right.store.bool.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        (Literal::String(..), Literal::String(..)) => {
-            let z:bool = left.value == right.value;
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        _ => {return None;}
-    }
-}
-
-
-pub fn lesser(left: DataType, right: DataType) -> Option<DataType> {
-    match (left.kind, right.kind) {
-        (Literal::Int(..), Literal::Int(..)) => {
-            let z:bool = left.store.integer.unwrap() < right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        _ => {return None;}
-    }
-}
-
-
-pub fn greater(left: DataType, right: DataType) -> Option<DataType> {
-    match (left.kind, right.kind) {
-        (Literal::Int(..), Literal::Int(..)) => {
-            let z:bool = left.store.integer.unwrap() > right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        _ => {return None;}
-    }
-}
-
-
-pub fn equal_lesser(left: DataType, right: DataType) -> Option<DataType> {
-    match (left.kind, right.kind) {
-        (Literal::Int(..), Literal::Int(..)) => {
-            let z:bool = left.store.integer.unwrap() <= right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        _ => {return None;}
-    }
-}
-
-
-pub fn equal_greater(left: DataType, right: DataType) -> Option<DataType> {
-    match (left.kind, right.kind) {
-        (Literal::Int(..), Literal::Int(..)) => {
-            let z:bool = left.store.integer.unwrap() >= right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        _ => {return None;}
-    }
-}
-
-
-pub fn not(right: DataType) -> Option<DataType> {
-    match right.kind {
-        Literal::Bool(..) => {
-            let z:bool = !right.store.bool.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        _ => {return None;}
-    }
-}
-
-pub fn not_equal(left: DataType, right: DataType) -> Option<DataType> {
-    match (left.kind, right.kind) {
-        (Literal::Int(..), Literal::Int(..)) => {
-            let z:bool = left.store.integer.unwrap() != right.store.integer.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        (Literal::Bool(..), Literal::Bool(..)) => {
-            let z:bool = left.store.bool.unwrap() != right.store.bool.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        (Literal::String(..), Literal::String(..)) => {
-            let z:bool = left.value != right.value;
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        _ => {return None;}
-    }
-}
-
-pub fn and(left: DataType, right: DataType) -> Option<DataType> {
-    match (left.kind, right.kind) {
-        (Literal::Bool(..), Literal::Bool(..)) => {
-            let z:bool = left.store.bool.unwrap() && right.store.bool.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        _ => {return None;}
-    }
-}
-
-
-pub fn or(left: DataType, right: DataType) -> Option<DataType> {
-    match (left.kind, right.kind) {
-        (Literal::Bool(..), Literal::Bool(..)) => {
-            let z:bool = left.store.bool.unwrap() || right.store.bool.unwrap();
-            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
-        }
-        _ => {return None;}
-    }
-}
