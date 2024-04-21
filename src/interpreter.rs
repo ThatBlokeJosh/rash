@@ -89,7 +89,7 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
         Expr::Literal(lit) => { 
             match lit {
                 Literal::Variable(x) => {
-                    return get_from_scope(scopes, x);
+                    return get_from_scope(scopes, x).expect("ERROR");
                 }
                 Literal::Int(x) => {
                     let mut value = in_expr.expand().unwrap();
@@ -161,7 +161,7 @@ pub fn calculate_unexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataTyp
         Expr::Literal(lit) => { 
             match lit {
                 Literal::Variable(x) => {
-                    value = get_from_scope(scopes, x.as_str())?;
+                    value = get_from_scope(scopes, x.as_str()).expect("ERROR")?;
                 }
                 _ => {
                     value = Expr::Literal(lit).expand()?;
@@ -190,7 +190,7 @@ pub fn format_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) 
             Expr::Literal(x) => {
                 match x {
                     Literal::Variable(y) => {
-                        value.value += &get_from_scope(scopes, &y)?.value;
+                        value.value += &get_from_scope(scopes, &y).expect("ERROR")?.value;
                     }
                     Literal::String(y) => {value.value += &y}
                     _ => {}
@@ -209,7 +209,7 @@ pub fn shell_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, p
             Expr::Literal(x) => {
                 match x {
                     Literal::Variable(y) => {
-                        value.value += &get_from_scope(scopes, &y)?.value;
+                        value.value += &get_from_scope(scopes, &y).expect("ERROR")?.value;
                     }
                     Literal::String(y) => {value.value += &y}
                     _ => {}
@@ -242,7 +242,7 @@ pub fn run_function<'a>(call: &mut Function, scopes: &mut Vec<HashMap<String, Da
     let mut scope: HashMap<String, DataType> = HashMap::new();
     let expr = functions.get(&call.name).unwrap(); 
     if expr.arguments.len() != call.arguments.len() {
-        return Err("Invalid ammount of arguments to this function");
+        return Err("INVALID ARGUMENTS: Invalid ammount of arguments to this function");
     }
 
     for i in 0..call.arguments.len() {
@@ -288,7 +288,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
             }
         }
     } else if expr.conditions.len() != 3 {
-       return Err("Conditions to this statement are invalid".to_string()); 
+       return Err("BAD CONDITIONS".to_string()); 
     } 
 
     let iterator_key: String;
@@ -303,12 +303,12 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
                     set_into_scope(scopes, scopes.len()-1, iterator_key.clone(), output);
                 }
                 _ => {
-                    return Err("Bad iterator".to_string());
+                    return Err("BAD ITERATOR".to_string());
                 }
             }
         }
         _ => {
-            return Err("Bad iterator".to_string());
+            return Err("BAD ITERATOR".to_string());
         }
     }
 
@@ -331,7 +331,6 @@ pub fn run_print(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>) {
         let output = calculate_bexpr(&arg, scopes); 
         print!("{} ", output.unwrap().value)
     }
-    println!();
 }
 
 
@@ -339,16 +338,15 @@ pub fn set_into_scope(scopes: &mut Vec<HashMap<String, DataType>>, index: usize,
     scopes[index].insert(name, value);
 }
 
-pub fn get_from_scope(scopes: &mut Vec<HashMap<String, DataType>>, name: &str) -> Option<DataType> {
+pub fn get_from_scope(scopes: &mut Vec<HashMap<String, DataType>>, name: &str) -> Result<Option<DataType>, String> {
     for scope in scopes {
-        match scope.get(name) {
-            Some(x) => {
-                return Some(x.clone());
-            }
-            _ => {} 
+        let var = scope.get(name);
+        match var {
+            None => {} 
+            _ => {return Ok(var.cloned())}
         }
     } 
-    return None;
+    return Err(format!("VARIABLE NOT FOUND: {} wasn't found", name));
 }
 
 pub fn add(left: DataType, right: DataType) -> Option<DataType> {

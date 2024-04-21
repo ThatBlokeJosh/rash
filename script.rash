@@ -1,5 +1,4 @@
-fn bruno(money) {
-	print(f"Bruno has this much money: ${money}";)
+for i = 0; i < 10; ++i; {
+	print(i;)
 }
-
-bruno(10;)
+print(i;)
