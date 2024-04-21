@@ -67,6 +67,10 @@ pub enum Operator {
     Minus,
     Times,
     Divide,
+    And,
+    Or,
+    Not,
+    NotEqual,
     Nil,
 }
 
@@ -211,7 +215,7 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                 tree.push(Box::new(expr));
                 i += j;
             }
-            TokenType::Equals | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualGreater | TokenType::EqualLesser | TokenType::Plus => {
+            TokenType::Equals | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualGreater | TokenType::EqualLesser | TokenType::Plus | TokenType::And | TokenType::Or | TokenType::Not | TokenType::NotEqual => {
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_bin(tokens[i..].to_vec(), *tree[tree.len()-1].clone());
@@ -320,6 +324,9 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
         TokenType::EqualLesser=>{operator = Operator::EqualLesser},
         TokenType::LesserThan=>{operator = Operator::LesserThan},
         TokenType::GreaterThan=>{operator = Operator::GreaterThan},
+        TokenType::And=>{operator = Operator::And},
+        TokenType::Not=>{operator = Operator::Not},
+        TokenType::NotEqual=>{operator = Operator::NotEqual},
         TokenType::OpeningBracket => {
             return parse_function(tokens[0..].to_vec(), name);
         },
@@ -354,7 +361,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
             TokenType::Bool => {
                 expr = Expr::Literal(Literal::Bool(value));
             }
-            TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualLesser | TokenType::EqualGreater => {
+            TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualLesser | TokenType::EqualGreater | TokenType::Not | TokenType::NotEqual | TokenType::And => {
                 let j: usize;
                 (expr, j) = parse_bin(tokens[i..].to_vec(), expr);
                 i += j;
@@ -378,15 +385,87 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
         TokenType::Minus=>{operator = Operator::Minus},
         TokenType::Times=>{operator = Operator::Times},
         TokenType::Divide=>{operator = Operator::Divide},
+        TokenType::Equals=>{operator = Operator::Equals},
         TokenType::EqualTo=>{operator = Operator::EqualTo},
         TokenType::EqualGreater=>{operator = Operator::EqualGreater},
         TokenType::EqualLesser=>{operator = Operator::EqualLesser},
         TokenType::LesserThan=>{operator = Operator::LesserThan},
         TokenType::GreaterThan=>{operator = Operator::GreaterThan},
+        TokenType::And=>{operator = Operator::And},
+        TokenType::Not=>{operator = Operator::Not},
+        TokenType::NotEqual=>{operator = Operator::NotEqual},
         _ => {}, 
     }
     let mut bin = BinaryExpr{operator, left: Box::new(left), right: Box::new(Expr::Nil)};
     let mut i:usize = 1;
+    while i < tokens.len() { 
+        let value = (&tokens[i].value).to_string();
+        match tokens[i].kind {
+            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace => {
+                i -= 1;
+                break;
+            }
+            TokenType::Name => {
+                bin.right = Box::new(Expr::Literal(Literal::Variable(value)));
+            }
+            TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_string(tokens[i..].to_vec());
+                bin.right = Box::new(expr);
+                i += j-1;
+            }
+            TokenType::Number => {
+                bin.right = Box::new(Expr::Literal(Literal::Int(value)));
+            }
+            TokenType::Bool => {
+                bin.right = Box::new(Expr::Literal(Literal::Bool(value)));
+            }
+            TokenType::And | TokenType::Or => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = and_or(tokens[i..].to_vec(), Expr::Binary(bin.clone()));
+                match expr {
+                    Expr::Binary(x) => {
+                        bin = x;
+                    }
+                    _ => {}
+                }
+                i += j;
+
+            }
+            TokenType::Equals | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualGreater | TokenType::EqualLesser | TokenType::Plus | TokenType::Not | TokenType::NotEqual => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_bin(tokens[i..].to_vec(), Expr::Binary(bin.clone()));
+                match expr {
+                    Expr::Binary(x) => {
+                        bin = x;
+                    }
+                    _ => {}
+                }
+                i += j;
+            }
+            _ => {
+
+            }
+        }
+        i += 1;
+    }
+    return (Expr::Binary(bin), i);
+}
+
+pub fn and_or(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
+    let mut operator: Operator = Operator::Nil;
+    match tokens[0].kind {
+        TokenType::And=>{operator = Operator::And},
+        TokenType::Or=>{operator = Operator::Or},
+        _ => {}, 
+    }
+    let mut bin = BinaryExpr{operator, left: Box::new(left), right: Box::new(Expr::Nil)};
+    let mut i:usize = 1;
+    
+
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
@@ -409,10 +488,10 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
             TokenType::Bool => {
                 bin.right = Box::new(Expr::Literal(Literal::Bool(value)));
             }
-            TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualLesser | TokenType::EqualGreater => {
+            TokenType::And | TokenType::Or => {
                 let j: usize;
                 let expr: Expr;
-                (expr, j) = parse_bin(tokens[i..].to_vec(), Expr::Binary(bin.clone()));
+                (expr, j) = and_or(tokens[i..].to_vec(), Expr::Binary(bin.clone()));
                 match expr {
                     Expr::Binary(x) => {
                         bin = x;
@@ -421,12 +500,20 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
                 }
                 i += j;
             }
+            TokenType::Equals | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualGreater | TokenType::EqualLesser | TokenType::Plus | TokenType::Not | TokenType::NotEqual => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_bin(tokens[i..].to_vec(), *bin.right);
+                bin.right = Box::new(expr);
+                i += j;
+            }
             _ => {
 
             }
         }
         i += 1;
     }
+
     return (Expr::Binary(bin), i);
 }
 

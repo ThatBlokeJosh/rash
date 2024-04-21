@@ -101,6 +101,16 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
                     }
                     return Some(value);
                 }
+                Literal::Bool(x) => {
+                    let mut value = in_expr.expand().unwrap();
+                    match value.store.integer {
+                        None => {
+                            value.store.bool = Some(x.parse().unwrap());
+                        }
+                        _ => {}
+                    }
+                    return Some(value);
+                }
                 _ => {
                     return in_expr.expand();
                 }
@@ -143,6 +153,24 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
         }
         Operator::GreaterThan => {
             return greater(left.unwrap(), right.unwrap());
+        }
+        Operator::EqualLesser => {
+            return equal_lesser(left.unwrap(), right.unwrap());
+        }
+        Operator::EqualGreater => {
+            return equal_greater(left.unwrap(), right.unwrap());
+        }
+        Operator::Not => {
+            return not(right.unwrap());
+        }
+        Operator::NotEqual => {
+            return not_equal(left.unwrap(), right.unwrap());
+        }
+        Operator::And => {
+            return and(left.unwrap(), right.unwrap());
+        }
+        Operator::Or => {
+            return or(left.unwrap(), right.unwrap());
         }
         _ => {}
     }
@@ -395,6 +423,14 @@ pub fn equals(left: DataType, right: DataType) -> Option<DataType> {
             let z:bool = left.store.integer.unwrap() == right.store.integer.unwrap();
             return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
         }
+        (Literal::Bool(..), Literal::Bool(..)) => {
+            let z:bool = left.store.bool.unwrap() == right.store.bool.unwrap();
+            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+        }
+        (Literal::String(..), Literal::String(..)) => {
+            let z:bool = left.value == right.value;
+            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+        }
         _ => {return None;}
     }
 }
@@ -415,6 +451,78 @@ pub fn greater(left: DataType, right: DataType) -> Option<DataType> {
     match (left.kind, right.kind) {
         (Literal::Int(..), Literal::Int(..)) => {
             let z:bool = left.store.integer.unwrap() > right.store.integer.unwrap();
+            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+        }
+        _ => {return None;}
+    }
+}
+
+
+pub fn equal_lesser(left: DataType, right: DataType) -> Option<DataType> {
+    match (left.kind, right.kind) {
+        (Literal::Int(..), Literal::Int(..)) => {
+            let z:bool = left.store.integer.unwrap() <= right.store.integer.unwrap();
+            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+        }
+        _ => {return None;}
+    }
+}
+
+
+pub fn equal_greater(left: DataType, right: DataType) -> Option<DataType> {
+    match (left.kind, right.kind) {
+        (Literal::Int(..), Literal::Int(..)) => {
+            let z:bool = left.store.integer.unwrap() >= right.store.integer.unwrap();
+            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+        }
+        _ => {return None;}
+    }
+}
+
+
+pub fn not(right: DataType) -> Option<DataType> {
+    match right.kind {
+        Literal::Bool(..) => {
+            let z:bool = !right.store.bool.unwrap();
+            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+        }
+        _ => {return None;}
+    }
+}
+
+pub fn not_equal(left: DataType, right: DataType) -> Option<DataType> {
+    match (left.kind, right.kind) {
+        (Literal::Int(..), Literal::Int(..)) => {
+            let z:bool = left.store.integer.unwrap() != right.store.integer.unwrap();
+            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+        }
+        (Literal::Bool(..), Literal::Bool(..)) => {
+            let z:bool = left.store.bool.unwrap() != right.store.bool.unwrap();
+            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+        }
+        (Literal::String(..), Literal::String(..)) => {
+            let z:bool = left.value != right.value;
+            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+        }
+        _ => {return None;}
+    }
+}
+
+pub fn and(left: DataType, right: DataType) -> Option<DataType> {
+    match (left.kind, right.kind) {
+        (Literal::Bool(..), Literal::Bool(..)) => {
+            let z:bool = left.store.bool.unwrap() && right.store.bool.unwrap();
+            return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
+        }
+        _ => {return None;}
+    }
+}
+
+
+pub fn or(left: DataType, right: DataType) -> Option<DataType> {
+    match (left.kind, right.kind) {
+        (Literal::Bool(..), Literal::Bool(..)) => {
+            let z:bool = left.store.bool.unwrap() || right.store.bool.unwrap();
             return Some(DataType{value: z.to_string(), kind: Literal::Bool("".to_string()), store: DataStore::new(None, Some(z))});
         }
         _ => {return None;}
