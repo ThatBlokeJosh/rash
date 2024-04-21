@@ -156,20 +156,7 @@ pub fn calculate_unexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataTyp
         Expr::Unary(x) => { expr = x;}
         _ => {return None;}
     }
-    let mut value: DataType = DataType::new();
-    match *expr.value.clone() {
-        Expr::Literal(lit) => { 
-            match lit {
-                Literal::Variable(x) => {
-                    value = get_from_scope(scopes, x.as_str()).expect("ERROR")?;
-                }
-                _ => {
-                    value = Expr::Literal(lit).expand()?;
-                }
-            }
-        }
-        _ => {}
-    }
+    let value: DataType = get_from_scope(scopes, expr.value.expand().unwrap().value.as_str()).expect("ERROR").unwrap();
     let one: DataType = DataType{value: "1".to_string(), kind: Literal::Int("".to_string()), store: DataStore::new(Some(1), None)};
     match expr.operator {
         Operator::Plus => {
@@ -300,7 +287,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
                 Operator::Equals => {
                     iterator_key = name_expr.left.expand().expect("Where did the name go").value;
                     let output = calculate_bexpr(&name_expr.right, scopes).unwrap();
-                    set_into_scope(scopes, scopes.len()-1, iterator_key.clone(), output);
+                    set_into_scope(scopes, scopes.len()-1, iterator_key.to_owned(), output);
                 }
                 _ => {
                     return Err("BAD ITERATOR".to_string());
@@ -318,9 +305,12 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
         interpret(&expr.block, scopes, functions);
 
         let output = calculate_unexpr(&iterator_updater, scopes).unwrap();
-        set_into_scope(scopes, scopes.len()-1, iterator_key.clone(), output);
+        set_into_scope(scopes, scopes.len()-1, iterator_key.to_owned(), output);
 
         condition = calculate_bexpr(&expr.conditions[1], scopes).unwrap().store.bool.unwrap();
+        if !condition {
+            break;
+        }
     }
     scopes.pop();
     return Ok(());

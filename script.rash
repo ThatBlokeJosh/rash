@@ -1,4 +1,11 @@
-for i = 0; i < 10; ++i; {
-	print(i;)
+fn ls(dir) {
+    c"ls ${dir}"
 }
-print(i;)
+
+ls("/")
+
+fn curl(method, url) {
+    c"curl -X ${method} ${url}"
+}
+
+curl("POST", "google.com")
