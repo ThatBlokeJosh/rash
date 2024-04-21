@@ -1,7 +1,5 @@
-use regex::{Captures, Regex};
-use std::error::Error;
-use std::process::Command;
-use std::io::{self, Cursor, Write};
+use regex::Regex;
+use once_cell::sync::Lazy;
 
 #[derive(Debug, Clone, Copy)]
 pub enum TokenType {
@@ -54,8 +52,8 @@ pub struct Token<> {
     pub value: String,
 }
 
-pub fn tokenize(content: &str) -> Vec<Token> {
-    let keywords: Vec<(TokenType, Regex)> = Vec::from([
+static KEYWORDS: Lazy<[(TokenType, Regex); 40]> = Lazy::new(|| {
+    [
         (TokenType::Comment, Regex::new(r"^[/][/][ ]*").unwrap()),
         (TokenType::Newline, Regex::new(r"^[\n][ ]*").unwrap()),
         (TokenType::Print, Regex::new(r"^print[ ]*").unwrap()),
@@ -65,10 +63,19 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         (TokenType::If, Regex::new(r"^if[ ]*").unwrap()),
         (TokenType::ElseIf, Regex::new(r"^else if[ ]*").unwrap()),
         (TokenType::Else, Regex::new(r"^else[ ]*").unwrap()),
-        (TokenType::Float, Regex::new(r"^[-]?([\d| |]*[.])[\d| |]*").unwrap()),
+        (
+            TokenType::Float,
+            Regex::new(r"^[-]?([\d| |]*[.])[\d| |]*").unwrap(),
+        ),
         (TokenType::Number, Regex::new(r"^[-]?\d[\d| |]*").unwrap()),
-        (TokenType::FormattedQuote, Regex::new(r#"^[f]["][ ]*"#).unwrap()),
-        (TokenType::CommandQuote, Regex::new(r#"^[c]["][ ]*"#).unwrap()),
+        (
+            TokenType::FormattedQuote,
+            Regex::new(r#"^[f]["][ ]*"#).unwrap(),
+        ),
+        (
+            TokenType::CommandQuote,
+            Regex::new(r#"^[c]["][ ]*"#).unwrap(),
+        ),
         (TokenType::SingleQuote, Regex::new(r"^['][ ]*").unwrap()),
         (TokenType::DoubleQuote, Regex::new(r#"^["][ ]*"#).unwrap()),
         (TokenType::Bool, Regex::new(r"^true[ ]*").unwrap()),
@@ -95,20 +102,31 @@ pub fn tokenize(content: &str) -> Vec<Token> {
         (TokenType::OpeningBracket, Regex::new(r"^[(][ ]*").unwrap()),
         (TokenType::ClosingBracket, Regex::new(r"^[)][ ]*").unwrap()),
         (TokenType::Function, Regex::new(r"(^fn[ ]*)").unwrap()),
-        (TokenType::Name, Regex::new(r"(?<name>[A-Za-z_\d ]*)").unwrap()),
-    ]);
+        (
+            TokenType::Name,
+            Regex::new(r"(?<name>[A-Za-z_\d ]*)").unwrap(),
+        ),
+    ]
+});
 
-    let string_checkers: Vec<(TokenType, Regex)> = Vec::from([
+static STRING_CHECKERS: Lazy<[(TokenType, Regex); 6]> = Lazy::new(|| {
+    [
         (TokenType::SingleQuote, Regex::new(r"^[']").unwrap()),
         (TokenType::DoubleQuote, Regex::new(r#"^["]"#).unwrap()),
         (TokenType::Dollar, Regex::new(r"^[$][ ]*").unwrap()),
         (TokenType::OpeningBrace, Regex::new(r"^[{][ ]*").unwrap()),
         (TokenType::ClosingBrace, Regex::new(r"^[}][ ]*").unwrap()),
-        (TokenType::Content, Regex::new(r#"(?<name>[^'^"^}^$^{]*)"#).unwrap()),
-    ]);
+        (
+            TokenType::Content,
+            Regex::new(r#"(?<name>[^'^"^}^$^{]*)"#).unwrap(),
+        ),
+    ]
+});
+
+pub fn tokenize(content: &str) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
     let mut cursor: usize = 0;
-    let mut index: usize = keywords.len();
+    let mut index: usize = KEYWORDS.len();
 
     let mut string_starter = false;
     let mut iterator = content.trim();
@@ -119,7 +137,7 @@ pub fn tokenize(content: &str) -> Vec<Token> {
             break;
         }
         if string_starter {
-            for (kind, regex) in &string_checkers {
+            for (kind, regex) in &*STRING_CHECKERS {
                 let capture = capture(&regex, iterator, *kind);
                 if capture != "".to_string() {
                     let value = capture.to_string();
@@ -143,7 +161,7 @@ pub fn tokenize(content: &str) -> Vec<Token> {
                 }
             }
         } else {
-            for (kind, regex) in &keywords {
+            for (kind, regex) in &*KEYWORDS {
                 let capture = capture(&regex, iterator, *kind);
                 if capture != "".to_string() {
                     let value = capture.trim().to_string();
@@ -160,7 +178,7 @@ pub fn tokenize(content: &str) -> Vec<Token> {
                     cursor = capture.len(); 
                     let token = Token{kind: *kind, value};
                     tokens.push(token);
-                    index = keywords.len();
+                    index = KEYWORDS.len();
                     break;
                 } else {
                   index -= 1  

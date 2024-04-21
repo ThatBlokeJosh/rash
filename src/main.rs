@@ -33,13 +33,13 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    // println!("{:?}", tokens);
+    println!("{:?}", tokens);
     let tree = parse(tokens);
-    // println!("Tree: {:?} Length: {:?}", tree, tree.len());
+    println!("Tree: {:?} Length: {:?}", tree, tree.len());
 
-    let mut scopes: Vec<HashMap<String, DataType>> = Vec::new();
-    let mut functions: HashMap<String, Definition> = HashMap::new();
-    interpret(&tree, &mut scopes, &mut functions);
+    // let mut scopes: Vec<HashMap<String, DataType>> = Vec::new();
+    // let mut functions: HashMap<String, Definition> = HashMap::new();
+    // interpret(&tree, &mut scopes, &mut functions);
 
     return Ok(());
 }

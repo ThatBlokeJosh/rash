@@ -40,12 +40,12 @@ impl DataStore {
 }
 
 impl Expr {
-    pub fn unwrap(self) -> Option<DataType> {
+    pub fn expand(&self) -> Option<DataType> {
         match self {
             Expr::Literal(expr) => {
                 let kind = expr.clone();
                 match expr {
-                    Literal::Variable(x) | Literal::Int(x) | Literal::String(x) | Literal::Bool(x) | Literal::Float(x) => {return Some(DataType{value: x, kind, store: DataStore::new(None, None)});} 
+                    Literal::Variable(x) | Literal::Int(x) | Literal::String(x) | Literal::Bool(x) | Literal::Float(x) => {return Some(DataType{value: x.clone(), kind, store: DataStore::new(None, None)});} 
                     _ => {return None;}
                 }
             },
@@ -355,7 +355,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
             }
             TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualLesser | TokenType::EqualGreater => {
                 let j: usize;
-                (expr, j) = parse_bin(tokens[i..].to_vec(), expr.clone());
+                (expr, j) = parse_bin(tokens[i..].to_vec(), expr);
                 i += j;
             }
             _ => {

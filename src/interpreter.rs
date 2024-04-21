@@ -4,8 +4,7 @@ use std::process::Command;
 use crate::parser::{BinaryExpr, Block, BlockType, DataType, Expr, Function, FunctionType, Literal, Operator, UnaryExpr, DataStore, Definition};
 
 pub fn interpret(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) {
-    let mut scope: HashMap<String, DataType> = HashMap::new();
-    scopes.push(scope.clone());
+    scopes.push(HashMap::new());
     let mut if_status = false;
     let mut if_started = false;
     for branch in tree {
@@ -13,11 +12,9 @@ pub fn interpret(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataTyp
             Expr::Binary(expr) => {
                 match expr.operator {
                     Operator::Equals => {
-                        let name: DataType = expr.left.unwrap().expect("Where did the name go");
-                        let output = calculate_bexpr(&expr.right, scopes);
-                        scope.insert(name.value, output.unwrap());
-                        scopes.pop();
-                        scopes.push(scope.clone());
+                        let name: DataType = expr.left.expand().expect("Where did the name go");
+                        let output = calculate_bexpr(&expr.right, scopes).unwrap();
+                        set_into_scope(scopes, scopes.len()-1, name.value, output);
                     }
                     _ => {}
                 }
@@ -25,18 +22,18 @@ pub fn interpret(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataTyp
             Expr::Block(expr) => {
                 match expr.kind {
                     BlockType::If => {
-                        if_status = run_if(expr.clone(), scopes, functions).expect("Error");
+                        if_status = run_if(&expr, scopes, functions).expect("Error");
                         if_started = true;
                     }
                     BlockType::ElseIf => {
                         if if_started && !if_status {
-                            if_status = run_if(expr.clone(), scopes, functions).expect("Error");
+                            if_status = run_if(&expr, scopes, functions).expect("Error");
                         }
                     }
 
                     BlockType::Else => {
                         if if_started && !if_status {
-                            run_else(expr.clone(), scopes, functions).expect("Error");
+                            run_else(&expr, scopes, functions).expect("Error");
                         }
                         if_status = false;
                         if_started = false;
@@ -86,16 +83,16 @@ pub fn interpret(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataTyp
 }
 
 pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType>>) -> Option<DataType> {
-    let expr: BinaryExpr;
+    let expr: &BinaryExpr;
     match in_expr {
-        Expr::Binary(x) => {expr = x.clone();}
+        Expr::Binary(x) => {expr = x;}
         Expr::Literal(lit) => { 
             match lit {
                 Literal::Variable(x) => {
-                    return get_from_scope(scopes, x.to_string());
+                    return get_from_scope(scopes, x);
                 }
                 Literal::Int(x) => {
-                    let mut value = in_expr.clone().unwrap().unwrap();
+                    let mut value = in_expr.expand().unwrap();
                     match value.store.integer {
                         None => {
                             value.store.integer = Some(x.parse().unwrap());
@@ -105,7 +102,7 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
                     return Some(value);
                 }
                 _ => {
-                    return in_expr.clone().unwrap();
+                    return in_expr.expand();
                 }
             }
         }
@@ -154,20 +151,20 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
 
 
 pub fn calculate_unexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType>>) -> Option<DataType> {
-    let expr: UnaryExpr;
+    let expr: &UnaryExpr;
     match in_expr {
-        Expr::Unary(x) => { expr = x.clone();}
+        Expr::Unary(x) => { expr = x;}
         _ => {return None;}
     }
     let mut value: DataType = DataType::new();
-    match *expr.value {
+    match *expr.value.clone() {
         Expr::Literal(lit) => { 
             match lit {
                 Literal::Variable(x) => {
-                    value = get_from_scope(scopes, x)?;
+                    value = get_from_scope(scopes, x.as_str())?;
                 }
                 _ => {
-                    value = Expr::Literal(lit).unwrap()?;
+                    value = Expr::Literal(lit).expand()?;
                 }
             }
         }
@@ -193,7 +190,7 @@ pub fn format_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) 
             Expr::Literal(x) => {
                 match x {
                     Literal::Variable(y) => {
-                        value.value += &get_from_scope(scopes, y.to_string())?.value;
+                        value.value += &get_from_scope(scopes, &y)?.value;
                     }
                     Literal::String(y) => {value.value += &y}
                     _ => {}
@@ -212,7 +209,7 @@ pub fn shell_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, p
             Expr::Literal(x) => {
                 match x {
                     Literal::Variable(y) => {
-                        value.value += &get_from_scope(scopes, y.to_string())?.value;
+                        value.value += &get_from_scope(scopes, &y)?.value;
                     }
                     Literal::String(y) => {value.value += &y}
                     _ => {}
@@ -250,7 +247,7 @@ pub fn run_function<'a>(call: &mut Function, scopes: &mut Vec<HashMap<String, Da
 
     for i in 0..call.arguments.len() {
         let output = calculate_bexpr(&call.arguments[i], scopes).unwrap();
-        let name = expr.arguments[i].clone().unwrap().unwrap();
+        let name = expr.arguments[i].expand().unwrap();
         scope.insert(name.value, output);
     }
     scopes.push(scope);
@@ -259,16 +256,12 @@ pub fn run_function<'a>(call: &mut Function, scopes: &mut Vec<HashMap<String, Da
     return Ok(());
 }
 
-pub fn run_if(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<bool, String> {
+pub fn run_if(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<bool, String> {
     if expr.conditions.len() != 1 {
        return Err("Conditions to this statement are invalid".to_string()); 
     }
 
-    let condition_str = calculate_bexpr(&expr.conditions[0].clone(), scopes).unwrap().value;
-    let mut condition: bool = false;
-    if condition_str == "true".to_string() {
-        condition = true
-    }
+    let condition = calculate_bexpr(&expr.conditions[0], scopes).unwrap().store.bool.unwrap();
     
     if condition {
         interpret(&expr.block, scopes, functions)
@@ -277,12 +270,13 @@ pub fn run_if(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>, func
     return Ok(condition);
 }
 
-pub fn run_else(ref expr: Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
+pub fn run_else(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
     interpret(&expr.block, scopes, functions);
     return Ok(());
 }
 
 pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
+    scopes.push(HashMap::new());
     let mut condition;
     if expr.conditions.len() == 1 {
         condition = calculate_bexpr(&expr.conditions[0], scopes).unwrap().store.bool.unwrap();
@@ -297,23 +291,25 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
        return Err("Conditions to this statement are invalid".to_string()); 
     } 
 
-    let mut scope: HashMap<String, DataType> = HashMap::new();
-    let mut iterator_key: String = "".to_string();
+    let iterator_key: String;
     let iterator_updater = &expr.conditions[2];
 
     match *expr.conditions[0].clone()  {
         Expr::Binary(name_expr) => {
             match name_expr.operator {
                 Operator::Equals => {
-                    iterator_key = name_expr.left.unwrap().expect("Where did the name go").value;
-                    let output = calculate_bexpr(&name_expr.right, scopes);
-                    scope.insert(iterator_key.clone(), output.unwrap());
-                    scopes.push(scope.clone());
+                    iterator_key = name_expr.left.expand().expect("Where did the name go").value;
+                    let output = calculate_bexpr(&name_expr.right, scopes).unwrap();
+                    set_into_scope(scopes, scopes.len()-1, iterator_key.clone(), output);
                 }
-                _ => {}
+                _ => {
+                    return Err("Bad iterator".to_string());
+                }
             }
         }
-        _ => {}
+        _ => {
+            return Err("Bad iterator".to_string());
+        }
     }
 
     condition = calculate_bexpr(&expr.conditions[1], scopes).unwrap().store.bool.unwrap();
@@ -322,9 +318,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
         interpret(&expr.block, scopes, functions);
 
         let output = calculate_unexpr(&iterator_updater, scopes).unwrap();
-        scope.insert(iterator_key.clone(), output);
-        scopes.pop();
-        scopes.push(scope.clone());
+        set_into_scope(scopes, scopes.len()-1, iterator_key.clone(), output);
 
         condition = calculate_bexpr(&expr.conditions[1], scopes).unwrap().store.bool.unwrap();
     }
@@ -340,9 +334,14 @@ pub fn run_print(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>) {
     println!();
 }
 
-pub fn get_from_scope(scopes: &mut Vec<HashMap<String, DataType>>, name: String) -> Option<DataType> {
+
+pub fn set_into_scope(scopes: &mut Vec<HashMap<String, DataType>>, index: usize, name: String, value: DataType) {
+    scopes[index].insert(name, value);
+}
+
+pub fn get_from_scope(scopes: &mut Vec<HashMap<String, DataType>>, name: &str) -> Option<DataType> {
     for scope in scopes {
-        match scope.get(name.as_str()) {
+        match scope.get(name) {
             Some(x) => {
                 return Some(x.clone());
             }
