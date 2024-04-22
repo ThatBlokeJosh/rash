@@ -1,4 +1,5 @@
-import { cmd, math };
+fn add(x, y) {
+    return x + y;
+}
 
-ls("/")
-multiply(5, 4)
+z = add(5, 5);

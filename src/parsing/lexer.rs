@@ -45,6 +45,7 @@ pub enum TokenType {
     CommandQuote,
     Function,
     Import,
+    Return,
 }
 
 #[derive(Debug, Clone)]
@@ -53,12 +54,13 @@ pub struct Token<> {
     pub value: String,
 }
 
-static KEYWORDS: Lazy<[(TokenType, Regex); 41]> = Lazy::new(|| {
+static KEYWORDS: Lazy<[(TokenType, Regex); 42]> = Lazy::new(|| {
     [
         (TokenType::Comment, Regex::new(r"^[/][/][ ]*").unwrap()),
         (TokenType::Newline, Regex::new(r"^[\n][ ]*").unwrap()),
         (TokenType::Print, Regex::new(r"^print[ ]*").unwrap()),
         (TokenType::Import, Regex::new(r"^import[ ]*").unwrap()),
+        (TokenType::Return, Regex::new(r"^return[ ]*").unwrap()),
         (TokenType::Comma, Regex::new(r"^[,][ ]*").unwrap()),
         (TokenType::Tilda, Regex::new(r"^~[ ]*").unwrap()),
         (TokenType::For, Regex::new(r"^for[ ]*").unwrap()),

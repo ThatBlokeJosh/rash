@@ -20,7 +20,7 @@ c"curl ${url}"
 - [x] Add types
 - [x] Add variables
 - [x] Add loops, conditions and basic functions
-- [ ] More programming fundamentals
+- [x] Function definitons, importing
 - [ ] LSP???
 
 # Benchmark 📈
