@@ -1,8 +1,9 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 use std::process::Command;
 
 use crate::parsing::parser::{BinaryExpr, Block, BlockType, DataType, Expr, Function, FunctionType, Literal, Operator, UnaryExpr, DataStore, Definition};
-use crate::runtime::operations::{*};
+use crate::std_lib::std_lib::*;
+use crate::runtime::operations::*;
 
 pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) {
     scopes.push(HashMap::new());
@@ -55,6 +56,9 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
                         if_status = false;
                         if_started = false;
                         shell_string(&expr, scopes, true);
+                    }
+                    BlockType::Import => {
+                        import(&expr, functions).expect("ERROR");
                     }
                     _ => {} 
                 }
@@ -350,6 +354,13 @@ pub fn run_print(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>) {
         let output = calculate_bexpr(&arg, scopes); 
         print!("{} ", output.unwrap().value)
     }
+}
+
+pub fn import(expr: &Block, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
+    for lib in &expr.block {
+        let _ = std(functions, lib.expand().unwrap().value.as_str());
+    } 
+    return Ok(())
 }
 
 

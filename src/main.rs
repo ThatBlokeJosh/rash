@@ -1,5 +1,6 @@
 mod parsing;
 mod runtime;
+mod std_lib;
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;

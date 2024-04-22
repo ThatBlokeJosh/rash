@@ -1,0 +1,7 @@
+fn ls(dir) {
+    c"ls ${dir}"
+}
+
+fn curl(method, url) {
+    c"curl -X ${method} ${url}"
+}

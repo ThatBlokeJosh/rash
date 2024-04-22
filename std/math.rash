@@ -1,0 +1,7 @@
+fn add(x, y) {
+    print(x + y)
+}
+
+fn multiply(x, y) {
+    print(x * y)
+}

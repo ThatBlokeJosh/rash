@@ -97,6 +97,7 @@ pub enum BlockType {
     For,
     FormatedString,
     CommandString,
+    Import,
     Nil,
 }
 
@@ -200,7 +201,7 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                 tree.push(Box::new(expr));
                 i += j;
             }
-            TokenType::If | TokenType::ElseIf | TokenType::Else | TokenType::For => {
+            TokenType::If | TokenType::ElseIf | TokenType::Else | TokenType::For | TokenType::Import => {
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_block(tokens[i..].to_vec());
@@ -546,17 +547,18 @@ pub fn parse_un(tokens: Vec<Token>) -> (Expr, usize) {
 
 
 pub fn parse_block(tokens: Vec<Token>) -> (Expr, usize) {
+    let mut open = false;
     let mut block_kind: BlockType = BlockType::Nil;
     match tokens[0].kind {
         TokenType::If=>{block_kind = BlockType::If},
         TokenType::Else=>{block_kind = BlockType::Else},
         TokenType::ElseIf=>{block_kind = BlockType::ElseIf},
         TokenType::For=>{block_kind = BlockType::For},
+        TokenType::Import=>{block_kind = BlockType::Import; open = true;},
         _ => {}, 
     }
     let mut block: Block = Block{kind: block_kind, block: Vec::new(), conditions: Vec::new()};
     let mut i:usize = 1;
-    let mut open = false;
     while i < tokens.len() { 
         match tokens[i].kind {
             _ => {

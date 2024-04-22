@@ -1,0 +1,4 @@
+import { cmd, math };
+
+ls("/")
+multiply(5, 4)
