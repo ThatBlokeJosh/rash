@@ -6,7 +6,6 @@ use crate::std_lib::std_lib::*;
 use crate::runtime::operations::*;
 
 pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Option<DataType> {
-    scopes.push(HashMap::new());
     let mut if_status = false;
     let mut if_started = false;
     for branch in tree {
@@ -105,7 +104,6 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
             _ => {},
         }
     }
-    scopes.pop();
     return None;
 }
 
@@ -315,6 +313,7 @@ pub fn run_return(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, fun
 }
 
 pub fn run_if(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(bool, Option<DataType>), String> {
+    scopes.push(HashMap::new());
     if expr.conditions.len() != 1 {
        return Err("Conditions to this statement are invalid".to_string()); 
     }
@@ -325,12 +324,15 @@ pub fn run_if(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functio
     if condition {
         output = run(&expr.block, scopes, functions);
     }
-
+    scopes.pop();
     return Ok((condition, output));
 }
 
 pub fn run_else(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<Option<DataType>, String> {
-    return Ok(run(&expr.block, scopes, functions)); 
+    scopes.push(HashMap::new());
+    let output = run(&expr.block, scopes, functions);
+    scopes.pop();
+    return Ok(output); 
 }
 
 pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<Option<DataType>, String> {
