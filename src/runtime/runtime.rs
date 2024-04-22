@@ -16,7 +16,7 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
                     Operator::Equals => {
                         let name: DataType = expr.left.expand().expect("Where did the name go");
                         let output = calculate_bexpr(&expr.right, scopes, functions).unwrap();
-                        set_into_scope(scopes, scopes.len()-1, name.value, output);
+                        set_into_scope(scopes, scopes.len()-1, name.value.as_str(), output);
                     }
                     _ => {}
                 }
@@ -299,7 +299,7 @@ pub fn run_function<'a>(call: &mut Function, scopes: &mut Vec<HashMap<String, Da
     for i in 0..call.arguments.len() {
         let output = calculate_bexpr(&call.arguments[i], scopes, &mut functions.clone()).unwrap();
         let name = expr.arguments[i].expand().unwrap();
-        set_into_scope(scopes, scopes.len()-1, name.value, output);
+        set_into_scope(scopes, scopes.len()-1, name.value.as_str(), output);
     }
     let output = run(&expr.block.clone(), scopes, functions);
     scopes.pop();
@@ -358,7 +358,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
                 Operator::Equals => {
                     iterator_key = name_expr.left.expand().expect("Where did the name go").value;
                     let output = calculate_bexpr(&name_expr.right, scopes, functions).unwrap();
-                    set_into_scope(scopes, scopes.len()-1, iterator_key.to_owned(), output);
+                    set_into_scope(scopes, scopes.len()-1, iterator_key.as_str(), output);
                 }
                 _ => {
                     return Err("BAD ITERATOR".to_string());
@@ -381,7 +381,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
         }
 
         let output = calculate_unexpr(&iterator_updater, scopes).unwrap();
-        set_into_scope(scopes, scopes.len()-1, iterator_key.to_owned(), output);
+        set_into_scope(scopes, scopes.len()-1, iterator_key.as_str(), output);
 
         condition = calculate_bexpr(&expr.conditions[1], scopes, functions).unwrap().store.bool.unwrap();
         if !condition {
@@ -407,8 +407,17 @@ pub fn import(expr: &Block, functions: &mut HashMap<String, Definition>) -> Resu
 }
 
 
-pub fn set_into_scope(scopes: &mut Vec<HashMap<String, DataType>>, index: usize, name: String, value: DataType) {
-    scopes[index].insert(name, value);
+pub fn set_into_scope(scopes: &mut Vec<HashMap<String, DataType>>, index: usize, name: &str, value: DataType) {
+    for scope in scopes.into_iter() {
+        match scope.get(name) {
+            Some(..) => {
+                scope.insert(name.to_string(), value);
+                return;
+            }
+            _ => {}
+        }
+    }
+    scopes[index].insert(name.to_string(), value);
 }
 
 pub fn get_from_scope(scopes: &mut Vec<HashMap<String, DataType>>, name: &str) -> Result<Option<DataType>, String> {

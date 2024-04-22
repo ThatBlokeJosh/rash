@@ -1,4 +1,4 @@
 import {math};
 
-result = multiply(0, 0);
+result = pow(5, 2);
 print(result);

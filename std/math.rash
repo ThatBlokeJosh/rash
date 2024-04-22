@@ -10,8 +10,12 @@ fn multiply(x, y) {
     return {x * y};
 }
 
-fn square(x) {
-    return {x * x};
+fn pow(x, base) {
+    y = x;
+    for i = 2; i <= base; ++i; {
+	y = y * x;
+    }
+    return {y};
 }
 
 fn divide(x, y) {
