@@ -24,18 +24,32 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
             Expr::Block(expr) => {
                 match expr.kind {
                     BlockType::If => {
-                        if_status = run_if(&expr, scopes, functions).expect("Error");
+                        let output: Option<DataType>;
+                        (if_status, output) = run_if(&expr, scopes, functions).expect("Error");
+                        match output {
+                            Some(..) => {return output;}
+                            _ => {}
+                        }
                         if_started = true;
                     }
                     BlockType::ElseIf => {
                         if if_started && !if_status {
-                            if_status = run_if(&expr, scopes, functions).expect("Error");
+                            let output: Option<DataType>;
+                            (if_status, output) = run_if(&expr, scopes, functions).expect("Error");
+                            match output {
+                                Some(..) => {return output;}
+                                _ => {}
+                            }
                         }
                     }
 
                     BlockType::Else => {
                         if if_started && !if_status {
-                            run_else(&expr, scopes, functions).expect("Error");
+                            let output = run_else(&expr, scopes, functions).expect("Error");
+                            match output {
+                                Some(..) => {return output;}
+                                _ => {}
+                            }
                         }
                         if_status = false;
                         if_started = false;
@@ -44,7 +58,11 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
                     BlockType::For => {
                         if_status = false;
                         if_started = false;
-                        run_for(&expr, scopes, functions).expect("Error");
+                        let output = run_for(&expr, scopes, functions).expect("Error");
+                        match output {
+                            Some(..) => {return output;}
+                            _ => {}
+                        }
                     }
                     BlockType::FormatedString => {
                         if_status = false;
@@ -289,30 +307,33 @@ pub fn run_function<'a>(call: &mut Function, scopes: &mut Vec<HashMap<String, Da
 }
 
 pub fn run_return(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Option<DataType> {
+    if expr.block.len() == 0 {
+        return Some(DataType::new());
+    }
     let output = calculate_bexpr(&expr.block[0], scopes, functions);
     return output;
 }
 
-pub fn run_if(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<bool, String> {
+pub fn run_if(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(bool, Option<DataType>), String> {
     if expr.conditions.len() != 1 {
        return Err("Conditions to this statement are invalid".to_string()); 
     }
 
     let condition = calculate_bexpr(&expr.conditions[0], scopes, functions).unwrap().store.bool.unwrap();
+    let mut output: Option<DataType> = None;
     
     if condition {
-        run(&expr.block, scopes, functions);
+        output = run(&expr.block, scopes, functions);
     }
 
-    return Ok(condition);
+    return Ok((condition, output));
 }
 
-pub fn run_else(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
-    run(&expr.block, scopes, functions);
-    return Ok(());
+pub fn run_else(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<Option<DataType>, String> {
+    return Ok(run(&expr.block, scopes, functions)); 
 }
 
-pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), String> {
+pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<Option<DataType>, String> {
     scopes.push(HashMap::new());
     let mut condition;
     if expr.conditions.len() == 1 {
@@ -352,7 +373,12 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
     condition = calculate_bexpr(&expr.conditions[1], scopes, functions).unwrap().store.bool.unwrap();
 
     while condition {
-        run(&expr.block, scopes, functions);
+        let block_output = run(&expr.block, scopes, functions);
+
+        match block_output {
+            Some(..) => {return Ok(block_output);}
+            _ => {}
+        }
 
         let output = calculate_unexpr(&iterator_updater, scopes).unwrap();
         set_into_scope(scopes, scopes.len()-1, iterator_key.to_owned(), output);
@@ -363,7 +389,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
         }
     }
     scopes.pop();
-    return Ok(());
+    return Ok(None);
 }
 
 pub fn run_print(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) {
