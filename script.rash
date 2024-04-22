@@ -1,4 +1,10 @@
 import {math};
 
+fn hello(message) {
+    print(message)
+}
+
+hello(f"hi")
+
 result = pow(5, 2);
 print(result);
