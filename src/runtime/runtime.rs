@@ -410,7 +410,7 @@ pub fn import(expr: &Block, functions: &mut HashMap<String, Definition>) -> Resu
 
 
 pub fn set_into_scope(scopes: &mut Vec<HashMap<String, DataType>>, index: usize, name: &str, value: DataType) {
-    for scope in scopes.into_iter() {
+    for scope in &mut *scopes {
         match scope.get(name) {
             Some(..) => {
                 scope.insert(name.to_string(), value);
