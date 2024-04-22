@@ -1,5 +1,4 @@
-fn add(x, y) {
-    return x + y;
-}
+import {math};
 
-z = add(5, 5);
+result = add(7, 8);
+print(result);

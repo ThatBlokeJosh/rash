@@ -98,6 +98,7 @@ pub enum BlockType {
     FormatedString,
     CommandString,
     Import,
+    Return,
     Nil,
 }
 
@@ -201,7 +202,7 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                 tree.push(Box::new(expr));
                 i += j;
             }
-            TokenType::If | TokenType::ElseIf | TokenType::Else | TokenType::For | TokenType::Import => {
+            TokenType::If | TokenType::ElseIf | TokenType::Else | TokenType::For | TokenType::Import | TokenType::Return => {
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_block(tokens[i..].to_vec());
@@ -340,11 +341,13 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace | TokenType::ClosingBracket => {
+            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace | TokenType::ClosingBrace | TokenType::ClosingBracket => {
                 break;
             }
-            TokenType::Name => {
-                expr = Expr::Literal(Literal::Variable(value));
+            TokenType::Name | TokenType::Content => {
+                let j: usize;
+                (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                i += j;
             }
             TokenType::SingleQuote | TokenType::DoubleQuote => {
                 let j: usize;
@@ -402,12 +405,9 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace => {
+            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace | TokenType::ClosingBrace => {
                 i -= 1;
                 break;
-            }
-            TokenType::Name => {
-                bin.right = Box::new(Expr::Literal(Literal::Variable(value)));
             }
             TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
                 let j: usize;
@@ -416,8 +416,12 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
                 bin.right = Box::new(expr);
                 i += j-1;
             }
-            TokenType::Number => {
-                bin.right = Box::new(Expr::Literal(Literal::Int(value)));
+            TokenType::Name => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                bin.right = Box::new(expr);
+                i += j;
             }
             TokenType::Bool => {
                 bin.right = Box::new(Expr::Literal(Literal::Bool(value)));
@@ -555,6 +559,7 @@ pub fn parse_block(tokens: Vec<Token>) -> (Expr, usize) {
         TokenType::ElseIf=>{block_kind = BlockType::ElseIf},
         TokenType::For=>{block_kind = BlockType::For},
         TokenType::Import=>{block_kind = BlockType::Import; open = true;},
+        TokenType::Return=>{block_kind = BlockType::Return; open = true;},
         _ => {}, 
     }
     let mut block: Block = Block{kind: block_kind, block: Vec::new(), conditions: Vec::new()};

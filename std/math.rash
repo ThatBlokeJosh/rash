@@ -1,7 +1,19 @@
 fn add(x, y) {
-    print(x + y)
+    return {x + y};
+}
+
+fn subtract(x, y) {
+    return {x - y};
 }
 
 fn multiply(x, y) {
-    print(x * y)
+    return {x * y};
+}
+
+fn square(x) {
+    return {x * x};
+}
+
+fn divide(x, y) {
+    return {x / y};
 }

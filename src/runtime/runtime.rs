@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::process::Command;
 
-use crate::parsing::parser::{BinaryExpr, Block, BlockType, DataType, Expr, Function, FunctionType, Literal, Operator, UnaryExpr, DataStore, Definition};
+use crate::parsing::parser::*;
 use crate::std_lib::std_lib::*;
 use crate::runtime::operations::*;
 
-pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) {
+pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Option<DataType> {
     scopes.push(HashMap::new());
     let mut if_status = false;
     let mut if_started = false;
@@ -15,7 +15,7 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
                 match expr.operator {
                     Operator::Equals => {
                         let name: DataType = expr.left.expand().expect("Where did the name go");
-                        let output = calculate_bexpr(&expr.right, scopes).unwrap();
+                        let output = calculate_bexpr(&expr.right, scopes, functions).unwrap();
                         set_into_scope(scopes, scopes.len()-1, name.value, output);
                     }
                     _ => {}
@@ -60,6 +60,9 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
                     BlockType::Import => {
                         import(&expr, functions).expect("ERROR");
                     }
+                    BlockType::Return => {
+                        return run_return(&expr, scopes, functions);
+                    }
                     _ => {} 
                 }
             }
@@ -68,7 +71,7 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
                 if_started = false;
                 match expr.kind {
                     FunctionType::Print => {
-                        run_print(&expr, scopes)
+                        run_print(&expr, scopes, functions)
                     }
                     FunctionType::Defined => {
                         run_function(&mut expr, scopes, functions).expect("Error");
@@ -85,9 +88,10 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
         }
     }
     scopes.pop();
+    return None;
 }
 
-pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType>>) -> Option<DataType> {
+pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Option<DataType> {
     let expr: &BinaryExpr;
     match in_expr {
         Expr::Binary(x) => {expr = x;}
@@ -132,10 +136,20 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
                 _ => {return None;} 
             }
         }
+
+        Expr::Function(x) => {
+            match x.kind {
+                FunctionType::Defined => {
+                    let output = run_function(&mut x.clone(), scopes, functions).expect("Error");
+                    return output;
+                } 
+                _ => {return None;} 
+            }
+        }
         _ => {return None;}
     }
-    let left = calculate_bexpr(&expr.left, scopes);
-    let right = calculate_bexpr(&expr.right, scopes);
+    let left = calculate_bexpr(&expr.left, scopes, functions);
+    let right = calculate_bexpr(&expr.right, scopes, functions);
 
     match expr.operator {
         Operator::Plus => {
@@ -258,22 +272,25 @@ pub fn shell_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, p
     return Some(stdout);
 }
 
-pub fn run_function<'a>(call: &mut Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<(), &'a str> {
-    let mut scope: HashMap<String, DataType> = HashMap::new();
+pub fn run_function<'a>(call: &mut Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<Option<DataType>, &'a str> {
+    scopes.push(HashMap::new());
     let expr = functions.get(&call.name).unwrap(); 
     if expr.arguments.len() != call.arguments.len() {
         return Err("INVALID ARGUMENTS: Invalid ammount of arguments to this function");
     }
-
     for i in 0..call.arguments.len() {
-        let output = calculate_bexpr(&call.arguments[i], scopes).unwrap();
+        let output = calculate_bexpr(&call.arguments[i], scopes, &mut functions.clone()).unwrap();
         let name = expr.arguments[i].expand().unwrap();
-        scope.insert(name.value, output);
+        set_into_scope(scopes, scopes.len()-1, name.value, output);
     }
-    scopes.push(scope);
-    run(&expr.block.clone(), scopes, functions);
+    let output = run(&expr.block.clone(), scopes, functions);
     scopes.pop();
-    return Ok(());
+    return Ok(output);
+}
+
+pub fn run_return(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Option<DataType> {
+    let output = calculate_bexpr(&expr.block[0], scopes, functions);
+    return output;
 }
 
 pub fn run_if(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Result<bool, String> {
@@ -281,10 +298,10 @@ pub fn run_if(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functio
        return Err("Conditions to this statement are invalid".to_string()); 
     }
 
-    let condition = calculate_bexpr(&expr.conditions[0], scopes).unwrap().store.bool.unwrap();
+    let condition = calculate_bexpr(&expr.conditions[0], scopes, functions).unwrap().store.bool.unwrap();
     
     if condition {
-        run(&expr.block, scopes, functions)
+        run(&expr.block, scopes, functions);
     }
 
     return Ok(condition);
@@ -299,10 +316,10 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
     scopes.push(HashMap::new());
     let mut condition;
     if expr.conditions.len() == 1 {
-        condition = calculate_bexpr(&expr.conditions[0], scopes).unwrap().store.bool.unwrap();
+        condition = calculate_bexpr(&expr.conditions[0], scopes, functions).unwrap().store.bool.unwrap();
         while condition {
             run(&expr.block, scopes, functions);
-            condition = calculate_bexpr(&expr.conditions[0], scopes).unwrap().store.bool.unwrap();
+            condition = calculate_bexpr(&expr.conditions[0], scopes, functions).unwrap().store.bool.unwrap();
             if !condition {
                 break;
             }
@@ -319,7 +336,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
             match name_expr.operator {
                 Operator::Equals => {
                     iterator_key = name_expr.left.expand().expect("Where did the name go").value;
-                    let output = calculate_bexpr(&name_expr.right, scopes).unwrap();
+                    let output = calculate_bexpr(&name_expr.right, scopes, functions).unwrap();
                     set_into_scope(scopes, scopes.len()-1, iterator_key.to_owned(), output);
                 }
                 _ => {
@@ -332,7 +349,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
         }
     }
 
-    condition = calculate_bexpr(&expr.conditions[1], scopes).unwrap().store.bool.unwrap();
+    condition = calculate_bexpr(&expr.conditions[1], scopes, functions).unwrap().store.bool.unwrap();
 
     while condition {
         run(&expr.block, scopes, functions);
@@ -340,7 +357,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
         let output = calculate_unexpr(&iterator_updater, scopes).unwrap();
         set_into_scope(scopes, scopes.len()-1, iterator_key.to_owned(), output);
 
-        condition = calculate_bexpr(&expr.conditions[1], scopes).unwrap().store.bool.unwrap();
+        condition = calculate_bexpr(&expr.conditions[1], scopes, functions).unwrap().store.bool.unwrap();
         if !condition {
             break;
         }
@@ -349,9 +366,9 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
     return Ok(());
 }
 
-pub fn run_print(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>) {
+pub fn run_print(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) {
     for arg in &expr.arguments {
-        let output = calculate_bexpr(&arg, scopes); 
+        let output = calculate_bexpr(&arg, scopes, functions); 
         print!("{} ", output.unwrap().value)
     }
 }
