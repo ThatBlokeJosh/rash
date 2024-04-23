@@ -90,6 +90,9 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
                     FunctionType::Print => {
                         run_print(&expr, scopes, functions)
                     }
+                    FunctionType::Length => {
+                        run_len(&expr, scopes, functions);
+                    }
                     FunctionType::Defined => {
                         run_function(&mut expr, scopes, functions).expect("Error");
                     } 
@@ -116,12 +119,8 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
                 Literal::Variable => {
                     return get_from_scope(scopes, lit.value.as_str()).expect("ERROR");
                 }
-                Literal::Int => {
-                    let mut value = in_expr.expand().unwrap();
-                    return Some(value);
-                }
-                Literal::Bool => {
-                    let mut value = in_expr.expand().unwrap();
+                Literal::Int | Literal::Bool | Literal::Array => {
+                    let value = in_expr.expand().unwrap();
                     return Some(value);
                 }
                 _ => {
@@ -147,6 +146,11 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
                     let output = run_function(&mut x.clone(), scopes, functions).expect("Error");
                     return output;
                 } 
+
+                FunctionType::Length => {
+                    let output = run_len(x, scopes, functions);
+                    return output;
+                }
                 _ => {return None;} 
             }
         }
@@ -194,6 +198,9 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
         }
         Operator::Or => {
             return or(left.unwrap(), right.unwrap());
+        }
+        Operator::Index => {
+            return index(left.unwrap(), right.unwrap());
         }
         _ => {}
     }
@@ -269,7 +276,7 @@ pub fn shell_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, p
             .expect("failed to execute process")
     };
     let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
-    let stdout = DataType{value: stdout_str.clone(), kind: Literal::String, store: DataStore::new(None, None)};
+    let stdout = DataType{value: stdout_str, kind: Literal::String, store: DataStore::new(None, None)};
     if print_out {
         print!("{}", stdout.value);
     }
@@ -387,6 +394,14 @@ pub fn run_print(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>, f
         let output = calculate_bexpr(&arg, scopes, functions); 
         print!("{} ", output.unwrap().value)
     }
+}
+
+pub fn run_len(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Option<DataType> {
+    for arg in &expr.arguments {
+        let output: i32 = calculate_bexpr(&arg, scopes, functions).unwrap().store.array.unwrap().len().try_into().unwrap(); 
+        return Some(DataType{value: output.to_string(), kind: Literal::Int, store: DataStore::new(Some(output), None)});
+    }
+    return None;
 }
 
 pub fn import(expr: &Block, functions: &mut HashMap<String, Definition>) -> Result<(), String> {

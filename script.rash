@@ -1,2 +1,5 @@
-x = 100 + 100;
-print(x + 100)
+arr = [1, 2, 3, 4, 5]
+
+for i = 0; i < len(arr); ++i; {
+    print(arr[i]);
+}

@@ -161,3 +161,9 @@ pub fn or(left: DataType, right: DataType) -> Option<DataType> {
         _ => {return None;}
     }
 }
+
+pub fn index(left: DataType, right: DataType) -> Option<DataType> {
+    let i: usize = right.store.integer.unwrap().try_into().unwrap();
+    let value = &left.store.array.unwrap()[i];
+    return value.expand();
+}

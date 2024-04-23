@@ -46,6 +46,9 @@ pub enum TokenType {
     Function,
     Import,
     Return,
+    OpeningSquareBracket,
+    ClosingSquareBracket,
+    Length,
 }
 
 #[derive(Debug, Clone)]
@@ -54,11 +57,12 @@ pub struct Token<> {
     pub value: String,
 }
 
-static KEYWORDS: Lazy<[(TokenType, Regex); 42]> = Lazy::new(|| {
+static KEYWORDS: Lazy<[(TokenType, Regex); 45]> = Lazy::new(|| {
     [
         (TokenType::Comment, Regex::new(r"^[/][/][ ]*").unwrap()),
         (TokenType::Newline, Regex::new(r"^[\n][ ]*").unwrap()),
         (TokenType::Print, Regex::new(r"^print[ ]*").unwrap()),
+        (TokenType::Length, Regex::new(r"^len[ ]*").unwrap()),
         (TokenType::Import, Regex::new(r"^import[ ]*").unwrap()),
         (TokenType::Return, Regex::new(r"^return[ ]*").unwrap()),
         (TokenType::Comma, Regex::new(r"^[,][ ]*").unwrap()),
@@ -105,6 +109,8 @@ static KEYWORDS: Lazy<[(TokenType, Regex); 42]> = Lazy::new(|| {
         (TokenType::ClosingBrace, Regex::new(r"^[}][ ]*").unwrap()),
         (TokenType::OpeningBracket, Regex::new(r"^[(][ ]*").unwrap()),
         (TokenType::ClosingBracket, Regex::new(r"^[)][ ]*").unwrap()),
+        (TokenType::OpeningSquareBracket, Regex::new(r"^\[[ ]*").unwrap()),
+        (TokenType::ClosingSquareBracket, Regex::new(r"^\][ ]*").unwrap()),
         (TokenType::Function, Regex::new(r"(^fn[ ]*)").unwrap()),
         (
             TokenType::Name,

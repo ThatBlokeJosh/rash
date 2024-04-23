@@ -24,6 +24,7 @@ pub struct DataType {
 pub struct DataStore {
     pub integer: Option<i32>,
     pub bool: Option<bool>,
+    pub array: Option<Vec<Box<Expr>>>
 }
 
 impl DataType {
@@ -35,7 +36,7 @@ impl DataType {
 
 impl DataStore {
     pub fn new(integer: Option<i32>, bool: Option<bool>) -> Self {
-        return DataStore{integer, bool};
+        return DataStore{integer, bool, array: None};
     }
 }
 
@@ -66,6 +67,7 @@ pub enum Operator {
     Or,
     Not,
     NotEqual,
+    Index,
     Nil,
 }
 
@@ -113,6 +115,7 @@ impl Block {
 #[derive(Debug, Clone)]
 pub enum FunctionType {
     Print,
+    Length,
     Defined,
     Nil,
 }
@@ -146,6 +149,7 @@ pub enum Literal {
     Int,
     Float,
     Bool,
+    Array,
     Nil,
 }
 
@@ -170,10 +174,7 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                     break;
                 }
             }
-            TokenType::ClosingBrace => {
-                break;
-            }
-            TokenType::ClosingBracket => {
+            TokenType::ClosingBrace | TokenType::ClosingBracket | TokenType::ClosingSquareBracket => {
                 break;
             }
             TokenType::SingleQuote | TokenType::DoubleQuote => {
@@ -194,6 +195,13 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                tree.push(Box::new(expr));
+                i += j;
+            }
+            TokenType::OpeningSquareBracket => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_array(tokens[i..].to_vec());
                 tree.push(Box::new(expr));
                 i += j;
             }
@@ -231,7 +239,7 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                 let expr = Expr::Literal(data);
                 tree.push(Box::new(expr));
             }
-            TokenType::Print => {
+            TokenType::Print | TokenType::Length => {
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_function(tokens[i..].to_vec(), "print".to_string());
@@ -333,6 +341,9 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
         TokenType::OpeningBracket => {
             return parse_function(tokens[0..].to_vec(), name);
         },
+        TokenType::OpeningSquareBracket => {
+            operator = Operator::Index;
+        }
         _ => {
             let data = DataType{value: name, kind: Literal::Variable, store: DataStore::new(None, None)};
             return (Expr::Literal(data), 0);
@@ -349,6 +360,11 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
             TokenType::Name | TokenType::Content => {
                 let j: usize;
                 (expr, j) = parse_variable(tokens[i+1..].to_vec(), value.to_string());
+                i += j;
+            }
+            TokenType::OpeningSquareBracket => {
+                let j: usize;
+                (expr, j) = parse_array(tokens[i..].to_vec());
                 i += j;
             }
             TokenType::SingleQuote | TokenType::DoubleQuote => {
@@ -370,6 +386,11 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
                 let b: bool = value.parse().expect("INCORRECT BOOLEAN");
                 let data = DataType{value, kind: Literal::Bool, store: DataStore::new(None, Some(b))};
                 expr = Expr::Literal(data);
+            }
+            TokenType::Length => {
+                let j: usize;
+                (expr, j) = parse_function(tokens[i..].to_vec(), "length".to_string());
+                i += j;
             }
             TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualLesser | TokenType::EqualGreater | TokenType::Not | TokenType::NotEqual | TokenType::And => {
                 let j: usize;
@@ -423,6 +444,14 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
                 bin.right = Box::new(expr);
                 i += j-1;
             }
+
+            TokenType::OpeningSquareBracket => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_array(tokens[i..].to_vec());
+                bin.right = Box::new(expr);
+                i += j;
+            }
             TokenType::Name => {
                 let j: usize;
                 let expr: Expr;
@@ -439,6 +468,14 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
                 let integer: i32 = value.parse().expect("INCORRECT INTEGER");
                 let data = DataType{value, kind: Literal::Int, store: DataStore::new(Some(integer), None)};
                 bin.right = Box::new(Expr::Literal(data));
+            }
+
+            TokenType::Length => {
+                let j: usize;
+                let expr: Expr;
+                (expr, j) = parse_function(tokens[i..].to_vec(), "length".to_string());
+                bin.right = Box::new(expr);
+                i += j;
             }
             TokenType::And | TokenType::Or => {
                 let j: usize;
@@ -606,6 +643,7 @@ pub fn parse_function(tokens: Vec<Token>, name: String) -> (Expr, usize) {
     let mut function_kind: FunctionType = FunctionType::Defined;
     match tokens[0].kind {
         TokenType::Print=>{function_kind = FunctionType::Print},
+        TokenType::Length=>{function_kind = FunctionType::Length},
         _ => {}, 
     }
     let mut func: Function = Function{kind: function_kind, arguments: Vec::new(), name};
@@ -643,4 +681,13 @@ pub fn parse_definition(tokens: Vec<Token>) -> (Expr, usize) {
     }
     i += parse_any(tokens[i..].to_vec(), &mut func.block, false);
     return (Expr::Definition(func), i);
+}
+
+pub fn parse_array(tokens: Vec<Token>) -> (Expr, usize) { 
+    let mut data: DataType = DataType{kind:Literal::Array, value: "".to_string(), store: DataStore::new(None, None)};
+    let mut i:usize = 1;
+    let mut store: Vec<Box<Expr>> = Vec::new(); 
+    i += parse_any(tokens[i..].to_vec(), &mut store, false);
+    data.store.array = Some(store);
+    return (Expr::Literal(data), i);
 }
