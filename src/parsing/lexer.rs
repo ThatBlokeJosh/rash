@@ -181,7 +181,7 @@ pub fn tokenize(content: &str) -> Vec<Token> {
                             return tokens;
                         }
 
-                        TokenType::ClosingBracket => {
+                        TokenType::ClosingBracket | TokenType::ClosingSquareBracket => {
                             tokens.push(Token{kind: TokenType::Semicolon, value: ";".to_string()});
                         }
                         TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {

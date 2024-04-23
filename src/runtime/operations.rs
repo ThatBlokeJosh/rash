@@ -48,8 +48,6 @@ pub fn divide(left: DataType, right: DataType) -> Option<DataType> {
 }
 
 
-
-
 pub fn equals(left: DataType, right: DataType) -> Option<DataType> {
     match (left.kind, right.kind) {
         (Literal::Int, Literal::Int) => {
