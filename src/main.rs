@@ -36,6 +36,7 @@ fn main() -> std::io::Result<()> {
     // println!("Tree: {:?} Length: {:?}", tree, tree.len());
 
     let mut scopes: Vec<HashMap<String, DataType>> = Vec::new();
+    scopes.push(HashMap::new());
     let mut functions: HashMap<String, Definition> = HashMap::new();
     run(&tree, &mut scopes, &mut functions);
 

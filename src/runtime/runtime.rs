@@ -360,7 +360,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
                 Operator::Equals => {
                     iterator_key = name_expr.left.expand().expect("Where did the name go").value;
                     let output = calculate_bexpr(&name_expr.right, scopes, functions).unwrap();
-                    set_into_scope(scopes, scopes.len()-1, iterator_key.as_str(), output);
+                    set_into_current_scope(scopes, scopes.len()-1, iterator_key.clone(), output);
                 }
                 _ => {
                     return Err("BAD ITERATOR".to_string());
@@ -383,7 +383,7 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
         }
 
         let output = calculate_unexpr(&iterator_updater, scopes).unwrap();
-        set_into_scope(scopes, scopes.len()-1, iterator_key.as_str(), output);
+        set_into_current_scope(scopes, scopes.len()-1, iterator_key.clone(), output);
 
         condition = calculate_bexpr(&expr.conditions[1], scopes, functions).unwrap().store.bool.unwrap();
         if !condition {
@@ -422,9 +422,14 @@ pub fn set_into_scope(scopes: &mut Vec<HashMap<String, DataType>>, index: usize,
     scopes[index].insert(name.to_string(), value);
 }
 
+
+pub fn set_into_current_scope(scopes: &mut Vec<HashMap<String, DataType>>, index: usize, name: String, value: DataType) {
+    scopes[index].insert(name, value);
+}
+
 pub fn get_from_scope(scopes: &mut Vec<HashMap<String, DataType>>, name: &str) -> Result<Option<DataType>, String> {
-    for scope in scopes {
-        let var = scope.get(name);
+    for i in 0..scopes.len() {
+        let var = scopes[scopes.len() - i - 1].get(name);
         match var {
             None => {} 
             _ => {return Ok(var.cloned())}
