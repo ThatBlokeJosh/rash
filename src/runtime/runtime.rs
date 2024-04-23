@@ -112,28 +112,16 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
     match in_expr {
         Expr::Binary(x) => {expr = x;}
         Expr::Literal(lit) => { 
-            match lit {
-                Literal::Variable(x) => {
-                    return get_from_scope(scopes, x).expect("ERROR");
+            match lit.kind {
+                Literal::Variable => {
+                    return get_from_scope(scopes, lit.value.as_str()).expect("ERROR");
                 }
-                Literal::Int(x) => {
+                Literal::Int => {
                     let mut value = in_expr.expand().unwrap();
-                    match value.store.integer {
-                        None => {
-                            value.store.integer = Some(x.parse().unwrap());
-                        }
-                        _ => {}
-                    }
                     return Some(value);
                 }
-                Literal::Bool(x) => {
+                Literal::Bool => {
                     let mut value = in_expr.expand().unwrap();
-                    match value.store.integer {
-                        None => {
-                            value.store.bool = Some(x.parse().unwrap());
-                        }
-                        _ => {}
-                    }
                     return Some(value);
                 }
                 _ => {
@@ -220,7 +208,7 @@ pub fn calculate_unexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataTyp
         _ => {return None;}
     }
     let value: DataType = get_from_scope(scopes, expr.value.expand().unwrap().value.as_str()).expect("ERROR").unwrap();
-    let one: DataType = DataType{value: "1".to_string(), kind: Literal::Int("".to_string()), store: DataStore::new(Some(1), None)};
+    let one: DataType = DataType{value: "1".to_string(), kind: Literal::Int, store: DataStore::new(Some(1), None)};
     match expr.operator {
         Operator::Plus => {
             return add(value, one);
@@ -234,15 +222,15 @@ pub fn calculate_unexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataTyp
 }
 
 pub fn format_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) -> Option<DataType> {
-    let mut value: DataType = DataType { value: "".to_string(), kind: Literal::String("".to_string()), store: DataStore::new(None, None) };
+    let mut value: DataType = DataType { value: "".to_string(), kind: Literal::String, store: DataStore::new(None, None) };
     for content in expr.block.clone() {
         match *content {
             Expr::Literal(x) => {
-                match x {
-                    Literal::Variable(y) => {
-                        value.value += &get_from_scope(scopes, &y).expect("ERROR")?.value;
+                match x.kind {
+                    Literal::Variable => {
+                        value.value += &get_from_scope(scopes, &x.value).expect("ERROR")?.value;
                     }
-                    Literal::String(y) => {value.value += &y}
+                    Literal::String => {value.value += &x.value}
                     _ => {}
                 }
             }
@@ -253,15 +241,15 @@ pub fn format_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>) 
 }
 
 pub fn shell_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, print_out: bool) -> Option<DataType> {
-    let mut value: DataType = DataType { value: "".to_string(), kind: Literal::String("".to_string()), store: DataStore::new(None, None)};
+    let mut value: DataType = DataType { value: "".to_string(), kind: Literal::String, store: DataStore::new(None, None)};
     for content in expr.block.clone() {
         match *content {
             Expr::Literal(x) => {
-                match x {
-                    Literal::Variable(y) => {
-                        value.value += &get_from_scope(scopes, &y).expect("ERROR")?.value;
+                match x.kind {
+                    Literal::Variable => {
+                        value.value += &get_from_scope(scopes, &x.value).expect("ERROR")?.value;
                     }
-                    Literal::String(y) => {value.value += &y}
+                    Literal::String => {value.value += &x.value}
                     _ => {}
                 }
             }
@@ -281,7 +269,7 @@ pub fn shell_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, p
             .expect("failed to execute process")
     };
     let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
-    let stdout = DataType{value: stdout_str.clone(), kind: Literal::String(stdout_str.clone()), store: DataStore::new(None, None)};
+    let stdout = DataType{value: stdout_str.clone(), kind: Literal::String, store: DataStore::new(None, None)};
     if print_out {
         print!("{}", stdout.value);
     }

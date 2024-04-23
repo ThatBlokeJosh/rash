@@ -5,7 +5,7 @@ pub enum Expr {
     Unary(UnaryExpr),
     Binary(BinaryExpr),
     Block(Block),
-    Literal(Literal),
+    Literal(DataType),
     Function(Function),
     Definition(Definition),
     Nil,
@@ -43,12 +43,7 @@ impl Expr {
     pub fn expand(&self) -> Option<DataType> {
         match &self {
             Expr::Literal(expr) => {
-                match expr {
-                    Literal::Variable(x) | Literal::Int(x) | Literal::String(x) | Literal::Bool(x) | Literal::Float(x) => {
-                        return Some(DataType{value: x.to_string(), kind: expr.clone(), store: DataStore::new(None, None)});
-                    } 
-                    _ => {return None;}
-                }
+                return Some(expr.clone());
             },
             _ => {return None;}
         }
@@ -146,11 +141,11 @@ impl Definition {
 
 #[derive(Debug, Clone)]
 pub enum Literal {
-    String(String),
-    Variable(String),
-    Int(String),
-    Float(String),
-    Bool(String),
+    String,
+    Variable,
+    Int,
+    Float,
+    Bool,
     Nil,
 }
 
@@ -225,11 +220,15 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                 i += j;
             }
             TokenType::Number => {
-                let expr = Expr::Literal(Literal::Int(value.to_string()));
+                let integer: i32 = value.to_string().parse().expect("INCORRECT INTEGER");
+                let data = DataType{value: value.to_string(), kind: Literal::Int, store: DataStore::new(Some(integer), None)};
+                let expr = Expr::Literal(data);
                 tree.push(Box::new(expr));
             }
             TokenType::Bool => {
-                let expr = Expr::Literal(Literal::Bool(value.to_string()));
+                let b: bool = value.to_string().parse().expect("INCORRECT BOOLEAN");
+                let data = DataType{value: value.to_string(), kind: Literal::Bool, store: DataStore::new(None, Some(b))};
+                let expr = Expr::Literal(data);
                 tree.push(Box::new(expr));
             }
             TokenType::Print => {
@@ -282,7 +281,8 @@ pub fn parse_string(tokens: Vec<Token>) -> (Expr, usize) {
     if block.block.len() > 0 {
         return (Expr::Block(block), i);
     }
-    return (Expr::Literal(Literal::String(content)), i);
+    let data = DataType{value: content, kind: Literal::String, store: DataStore::new(None, None)};
+    return (Expr::Literal(data), i);
 }
 
 pub fn parse_fstring(tokens: Vec<Token>) -> (Expr, usize) {
@@ -305,7 +305,8 @@ pub fn parse_fstring(tokens: Vec<Token>) -> (Expr, usize) {
                 break;
             }
             _ => {
-                block.block.push(Box::new(Expr::Literal(Literal::String(value))))
+                let data = DataType{value, kind: Literal::String, store: DataStore::new(None, None)};
+                block.block.push(Box::new(Expr::Literal(data)))
             }
         }
         i += 1;
@@ -333,7 +334,8 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
             return parse_function(tokens[0..].to_vec(), name);
         },
         _ => {
-            return (Expr::Literal(Literal::Variable(name)), 0);
+            let data = DataType{value: name, kind: Literal::Variable, store: DataStore::new(None, None)};
+            return (Expr::Literal(data), 0);
         }, 
     }
     let mut expr: Expr = Expr::Nil; 
@@ -360,10 +362,14 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
                 i += j;
             }
             TokenType::Number => {
-                expr = Expr::Literal(Literal::Int(value));
+                let integer: i32 = value.parse().expect("INCORRECT INTEGER");
+                let data = DataType{value, kind: Literal::Int, store: DataStore::new(Some(integer), None)};
+                expr = Expr::Literal(data);
             }
             TokenType::Bool => {
-                expr = Expr::Literal(Literal::Bool(value));
+                let b: bool = value.parse().expect("INCORRECT BOOLEAN");
+                let data = DataType{value, kind: Literal::Bool, store: DataStore::new(None, Some(b))};
+                expr = Expr::Literal(data);
             }
             TokenType::Plus | TokenType::Minus | TokenType::Times | TokenType::Divide | TokenType::EqualTo | TokenType::LesserThan | TokenType::GreaterThan | TokenType::EqualLesser | TokenType::EqualGreater | TokenType::Not | TokenType::NotEqual | TokenType::And => {
                 let j: usize;
@@ -376,7 +382,8 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
         }
         i += 1;
     }
-    let left = Box::new(Expr::Literal(Literal::Variable(name))); 
+    let data = DataType{value: name, kind: Literal::Variable, store: DataStore::new(None, None)};
+    let left = Box::new(Expr::Literal(data)); 
     let right = Box::new(expr);
     let bin_expr: BinaryExpr = BinaryExpr{operator, left, right};
     return (Expr::Binary(bin_expr), i);
@@ -424,7 +431,14 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
                 i += j;
             }
             TokenType::Bool => {
-                bin.right = Box::new(Expr::Literal(Literal::Bool(value)));
+                let b: bool = value.parse().expect("INCORRECT BOOLEAN");
+                let data = DataType{value, kind: Literal::Bool, store: DataStore::new(None, Some(b))};
+                bin.right = Box::new(Expr::Literal(data));
+            }
+            TokenType::Number => {
+                let integer: i32 = value.parse().expect("INCORRECT INTEGER");
+                let data = DataType{value, kind: Literal::Int, store: DataStore::new(Some(integer), None)};
+                bin.right = Box::new(Expr::Literal(data));
             }
             TokenType::And | TokenType::Or => {
                 let j: usize;
@@ -478,7 +492,8 @@ pub fn and_or(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
                 break;
             }
             TokenType::Name => {
-                bin.right = Box::new(Expr::Literal(Literal::Variable(value)));
+                let data = DataType{value, kind: Literal::Variable, store: DataStore::new(None, None)};
+                bin.right = Box::new(Expr::Literal(data));
             }
             TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
                 let j: usize;
@@ -488,10 +503,14 @@ pub fn and_or(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
                 i += j-1;
             }
             TokenType::Number => {
-                bin.right = Box::new(Expr::Literal(Literal::Int(value)));
+                let integer: i32 = value.parse().expect("INCORRECT INTEGER");
+                let data = DataType{value, kind: Literal::Int, store: DataStore::new(Some(integer), None)};
+                bin.right = Box::new(Expr::Literal(data));
             }
             TokenType::Bool => {
-                bin.right = Box::new(Expr::Literal(Literal::Bool(value)));
+                let b: bool = value.parse().expect("INCORRECT BOOLEAN");
+                let data = DataType{value, kind: Literal::Bool, store: DataStore::new(None, Some(b))};
+                bin.right = Box::new(Expr::Literal(data));
             }
             TokenType::And | TokenType::Or => {
                 let j: usize;
@@ -538,7 +557,8 @@ pub fn parse_un(tokens: Vec<Token>) -> (Expr, usize) {
                 break;
             }
             TokenType::Name => {
-                un.value = Box::new(Expr::Literal(Literal::Variable(value)));
+                let data = DataType{value, kind: Literal::Variable, store: DataStore::new(None, None)};
+                un.value = Box::new(Expr::Literal(data));
             }
             _ => {
 
