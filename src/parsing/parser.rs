@@ -157,14 +157,14 @@ pub fn parse(tokens: Vec<Token>) -> Vec<Box<Expr>> {
     let mut tree: Vec<Box<Expr>> = Vec::new();
     let mut i:usize = 0;
     while i < tokens.len() { 
-        i += parse_any(tokens[i..].to_vec(), &mut tree, false);
+        i += parse_any(tokens[i..].to_vec(), &mut tree, false, true);
         i += 1
     }
     return tree;
 }
 
 
-pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool) -> usize {
+pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool, block: bool) -> usize {
     let mut i:usize = 0;
     while i < tokens.len() { 
         let value = &tokens[i].value;
@@ -174,8 +174,13 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                     break;
                 }
             }
-            TokenType::ClosingBrace | TokenType::ClosingBracket | TokenType::ClosingSquareBracket => {
+            TokenType::ClosingBrace => {
                 break;
+            }
+            TokenType::Semicolon | TokenType::Newline | TokenType::ClosingBracket | TokenType::ClosingSquareBracket => {
+                if !block {
+                    break;
+                }
             }
             TokenType::SingleQuote | TokenType::DoubleQuote => {
                 let j: usize;
@@ -224,6 +229,7 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_bin(tokens[i..].to_vec(), *tree[tree.len()-1].clone());
+                tree.pop();
                 tree.push(Box::new(expr));
                 i += j;
             }
@@ -274,7 +280,7 @@ pub fn parse_string(tokens: Vec<Token>) -> (Expr, usize) {
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
             TokenType::Dollar => {
-                i += parse_any(tokens[i..].to_vec(), &mut block.block, false);
+                i += parse_any(tokens[i..].to_vec(), &mut block.block, false, false);
             }
             TokenType::SingleQuote | TokenType::DoubleQuote | TokenType::CommandQuote | TokenType::FormattedQuote => {
                 i += 1;
@@ -306,7 +312,7 @@ pub fn parse_fstring(tokens: Vec<Token>) -> (Expr, usize) {
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
             TokenType::Dollar => {
-                i += parse_any(tokens[i..].to_vec(), &mut block.block, false);
+                i += parse_any(tokens[i..].to_vec(), &mut block.block, false, false);
             }
             TokenType::DoubleQuote => {
                 i += 1;
@@ -354,7 +360,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace | TokenType::ClosingBrace | TokenType::ClosingBracket => {
+            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace | TokenType::ClosingBrace | TokenType::ClosingBracket | TokenType::ClosingSquareBracket => {
                 break;
             }
             TokenType::Name | TokenType::Content => {
@@ -625,10 +631,10 @@ pub fn parse_block(tokens: Vec<Token>) -> (Expr, usize) {
         match tokens[i].kind {
             _ => {
                 if open {
-                    i += parse_any(tokens[i..].to_vec(), &mut block.block, false);
+                    i += parse_any(tokens[i..].to_vec(), &mut block.block, false, true);
                     break;
                 } else {
-                    i += parse_any(tokens[i..].to_vec(), &mut block.conditions, true);
+                    i += parse_any(tokens[i..].to_vec(), &mut block.conditions, true, true);
                     open = true;
                 }
             }
@@ -648,7 +654,7 @@ pub fn parse_function(tokens: Vec<Token>, name: String) -> (Expr, usize) {
     }
     let mut func: Function = Function{kind: function_kind, arguments: Vec::new(), name};
     let mut i:usize = 1;
-    i += parse_any(tokens[i..].to_vec(), &mut func.arguments, false);
+    i += parse_any(tokens[i..].to_vec(), &mut func.arguments, false, false);
     return (Expr::Function(func), i);
 }
 
@@ -679,7 +685,7 @@ pub fn parse_definition(tokens: Vec<Token>) -> (Expr, usize) {
         }
         i += 1;
     }
-    i += parse_any(tokens[i..].to_vec(), &mut func.block, false);
+    i += parse_any(tokens[i..].to_vec(), &mut func.block, false, true);
     return (Expr::Definition(func), i);
 }
 
@@ -687,7 +693,7 @@ pub fn parse_array(tokens: Vec<Token>) -> (Expr, usize) {
     let mut data: DataType = DataType{kind:Literal::Array, value: "".to_string(), store: DataStore::new(None, None)};
     let mut i:usize = 1;
     let mut store: Vec<Box<Expr>> = Vec::new(); 
-    i += parse_any(tokens[i..].to_vec(), &mut store, false);
+    i += parse_any(tokens[i..].to_vec(), &mut store, false, false);
     data.store.array = Some(store);
     return (Expr::Literal(data), i);
 }
