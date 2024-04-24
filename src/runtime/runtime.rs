@@ -97,6 +97,12 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
                     FunctionType::Pop => {
                         run_pop(&expr, scopes, functions);
                     }
+                    FunctionType::Push => {
+                        run_push(&expr, scopes, functions);
+                    }
+                    FunctionType::Swap => {
+                        run_swap(&expr, scopes, functions);
+                    }
                     FunctionType::Defined => {
                         run_function(&mut expr, scopes, functions).expect("Error");
                     } 
@@ -153,6 +159,21 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
 
                 FunctionType::Length => {
                     let output = run_len(x, scopes, functions);
+                    return output;
+                }
+
+                FunctionType::Pop => {
+                    let output = run_pop(x, scopes, functions);
+                    return output;
+                }
+
+                FunctionType::Push => {
+                    let output = run_push(x, scopes, functions);
+                    return output;
+                }
+
+                FunctionType::Swap => {
+                    let output = run_swap(x, scopes, functions);
                     return output;
                 }
                 _ => {return None;} 

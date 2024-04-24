@@ -363,7 +363,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace | TokenType::ClosingBrace | TokenType::ClosingBracket | TokenType::ClosingSquareBracket => {
+            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace | TokenType::ClosingBrace | TokenType::ClosingBracket | TokenType::ClosingSquareBracket | TokenType::Comma => {
                 break;
             }
             TokenType::Name | TokenType::Content => {
@@ -396,7 +396,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
                 let data = DataType{value, kind: Literal::Bool, store: DataStore::new(None, Some(b))};
                 expr = Expr::Literal(data);
             }
-            TokenType::Length => {
+            TokenType::Length | TokenType::Pop | TokenType::Push | TokenType::Swap => {
                 let j: usize;
                 (expr, j) = parse_function(tokens[i..].to_vec(), "length".to_string());
                 i += j;
@@ -442,7 +442,7 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
     while i < tokens.len() { 
         let value = (&tokens[i].value).to_string();
         match tokens[i].kind {
-            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace | TokenType::ClosingBrace => {
+            TokenType::Semicolon | TokenType::Newline | TokenType::OpeningBrace | TokenType::ClosingBrace | TokenType::Comma => {
                 i -= 1;
                 break;
             }
@@ -479,7 +479,7 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
                 bin.right = Box::new(Expr::Literal(data));
             }
 
-            TokenType::Length => {
+            TokenType::Length | TokenType::Pop | TokenType::Push | TokenType::Swap => {
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_function(tokens[i..].to_vec(), "length".to_string());
@@ -654,13 +654,15 @@ pub fn parse_function(tokens: Vec<Token>, name: String) -> (Expr, usize) {
         TokenType::Print=>{function_kind = FunctionType::Print},
         TokenType::Length=>{function_kind = FunctionType::Length},
         TokenType::Pop=>{function_kind = FunctionType::Pop},
+        TokenType::Push=>{function_kind = FunctionType::Push},
+        TokenType::Swap=>{function_kind = FunctionType::Swap},
 
         _ => {}, 
     }
     let mut func: Function = Function{kind: function_kind, arguments: Vec::new(), name};
     let mut i:usize = 1;
     i += parse_any(tokens[i..].to_vec(), &mut func.arguments, false, false);
-    return (Expr::Function(func), i);
+    return (Expr::Function(func), i+1);
 }
 
 pub fn parse_definition(tokens: Vec<Token>) -> (Expr, usize) {

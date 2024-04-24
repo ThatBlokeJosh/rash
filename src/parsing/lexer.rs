@@ -52,6 +52,7 @@ pub enum TokenType {
     Push,
     Pop,
     Swap,
+    Delete,
 }
 
 #[derive(Debug, Clone)]
@@ -60,7 +61,7 @@ pub struct Token<> {
     pub value: String,
 }
 
-static KEYWORDS: Lazy<[(TokenType, Regex); 48]> = Lazy::new(|| {
+static KEYWORDS: Lazy<[(TokenType, Regex); 49]> = Lazy::new(|| {
     [
         (TokenType::Comment, Regex::new(r"^[/][/][ ]*").unwrap()),
         (TokenType::Newline, Regex::new(r"^[\n][ ]*").unwrap()),
@@ -69,6 +70,7 @@ static KEYWORDS: Lazy<[(TokenType, Regex); 48]> = Lazy::new(|| {
         (TokenType::Push, Regex::new(r"^push[ ]*").unwrap()),
         (TokenType::Pop, Regex::new(r"^pop[ ]*").unwrap()),
         (TokenType::Swap, Regex::new(r"^swap[ ]*").unwrap()),
+        (TokenType::Delete, Regex::new(r"^delete[ ]*").unwrap()),
         (TokenType::Import, Regex::new(r"^import[ ]*").unwrap()),
         (TokenType::Return, Regex::new(r"^return[ ]*").unwrap()),
         (TokenType::Comma, Regex::new(r"^[,][ ]*").unwrap()),

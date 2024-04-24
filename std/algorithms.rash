@@ -1,0 +1,22 @@
+fn binary_search_wrapper(array, l, r, target) {
+    if l > r; {
+	print(f"Target ${target} not found")
+	return {-1};
+    }
+    middle = r - l; 
+    middle = middle / 2;
+    middle = middle + l;
+
+    if target == array[middle]; {
+	return {middle};	
+    } else if target < array[middle]; {
+	return {binary_search_wrapper(array, l, middle - 1, target)}
+    } else {
+	return {binary_search_wrapper(array, middle + 1, r, target)};
+    }
+}
+
+fn binary_search(array, target) {
+    r = len(array) - 1;
+    return {binary_search_wrapper(array, 0, r, target)};
+}

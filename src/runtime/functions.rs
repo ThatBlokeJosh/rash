@@ -6,7 +6,7 @@ use crate::HashMap;
 pub fn run_print(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) {
     for arg in &expr.arguments {
         let output = calculate_bexpr(&arg, scopes, functions); 
-        print!("{} ", output.unwrap().value)
+        print!("{}\n", output.unwrap().value)
     }
 }
 
@@ -21,9 +21,38 @@ pub fn run_len(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>, fun
 
 pub fn run_pop(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Option<DataType> {
     for arg in &expr.arguments {
-        let name = arg.expand().unwrap().value; 
-        let array = get_from_scope(scopes, name.as_str());
-        println!("{:?}", name);
+        let mut array = calculate_bexpr(&arg, scopes, functions).unwrap(); 
+        let mut store = array.store.array.unwrap().clone();
+        store.pop();
+        array.store.array = Some(store);
+        return Some(array);
     }
     return None;
+}
+
+
+pub fn run_push(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Option<DataType> {
+    let mut array: DataType = calculate_bexpr(&expr.arguments[0], scopes, functions).unwrap();
+    let mut store = array.store.array.unwrap();
+    for i in 1..expr.arguments.len() {
+        let arg = calculate_bexpr(&expr.arguments[i], scopes, functions).unwrap();
+        store.push(Box::new(Expr::Literal(arg)));
+    }
+    array.store.array = Some(store);
+    return Some(array);
+}
+
+pub fn run_swap(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Option<DataType> {
+    let mut array: DataType = calculate_bexpr(&expr.arguments[0], scopes, functions).unwrap();
+    let mut store = array.store.array.unwrap();
+    let mut index_int = calculate_bexpr(&expr.arguments[1], scopes, functions).unwrap().store.integer.unwrap();
+    if index_int < 0 {
+        let length: i32 = store.len().try_into().unwrap(); 
+        index_int = length + index_int; 
+    }
+    let index: usize = index_int.try_into().unwrap();
+    let value = calculate_bexpr(&expr.arguments[2], scopes, functions).unwrap();
+    store[index] = Box::new(Expr::Literal(value));
+    array.store.array = Some(store);
+    return Some(array);
 }
