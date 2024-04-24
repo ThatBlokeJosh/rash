@@ -25,7 +25,6 @@ c"curl ${url}"
 
 # Benchmark 📈
 
-Please don't look here
 
 | Language     | Time      |
 |--------------|-----------|
@@ -47,5 +46,3 @@ for i = 0; i < 100; ++i; {
   }
 }
 ```
-
-Honestly I'm quite pleased with this outcome, this language is pretty naively implemented so it's cool to see it working
