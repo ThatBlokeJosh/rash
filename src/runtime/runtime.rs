@@ -4,6 +4,7 @@ use std::process::Command;
 use crate::parsing::parser::*;
 use crate::std_lib::std_lib::*;
 use crate::runtime::operations::*;
+use crate::runtime::functions::*;
 
 pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Option<DataType> {
     let mut if_status = false;
@@ -92,6 +93,9 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
                     }
                     FunctionType::Length => {
                         run_len(&expr, scopes, functions);
+                    }
+                    FunctionType::Pop => {
+                        run_pop(&expr, scopes, functions);
                     }
                     FunctionType::Defined => {
                         run_function(&mut expr, scopes, functions).expect("Error");
@@ -387,21 +391,6 @@ pub fn run_for(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, functi
     }
     scopes.pop();
     return Ok(None);
-}
-
-pub fn run_print(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) {
-    for arg in &expr.arguments {
-        let output = calculate_bexpr(&arg, scopes, functions); 
-        print!("{} ", output.unwrap().value)
-    }
-}
-
-pub fn run_len(expr: &Function, scopes: &mut Vec<HashMap<String, DataType>>, functions: &mut HashMap<String, Definition>) -> Option<DataType> {
-    for arg in &expr.arguments {
-        let output: i32 = calculate_bexpr(&arg, scopes, functions).unwrap().store.array.unwrap().len().try_into().unwrap(); 
-        return Some(DataType{value: output.to_string(), kind: Literal::Int, store: DataStore::new(Some(output), None)});
-    }
-    return None;
 }
 
 pub fn import(expr: &Block, functions: &mut HashMap<String, Definition>) -> Result<(), String> {

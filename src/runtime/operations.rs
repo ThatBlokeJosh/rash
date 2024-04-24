@@ -161,7 +161,13 @@ pub fn or(left: DataType, right: DataType) -> Option<DataType> {
 }
 
 pub fn index(left: DataType, right: DataType) -> Option<DataType> {
-    let i: usize = right.store.integer.unwrap().try_into().unwrap();
-    let value = &left.store.array.unwrap()[i];
+    let array = &left.store.array.unwrap();
+    let mut index_int = right.store.integer.unwrap();
+    if index_int < 0 {
+        let length: i32 = array.len().try_into().unwrap(); 
+        index_int = length + index_int; 
+    }
+    let i: usize = index_int.try_into().unwrap();
+    let value = &array[i];
     return value.expand();
 }

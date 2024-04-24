@@ -49,6 +49,9 @@ pub enum TokenType {
     OpeningSquareBracket,
     ClosingSquareBracket,
     Length,
+    Push,
+    Pop,
+    Swap,
 }
 
 #[derive(Debug, Clone)]
@@ -57,12 +60,15 @@ pub struct Token<> {
     pub value: String,
 }
 
-static KEYWORDS: Lazy<[(TokenType, Regex); 45]> = Lazy::new(|| {
+static KEYWORDS: Lazy<[(TokenType, Regex); 48]> = Lazy::new(|| {
     [
         (TokenType::Comment, Regex::new(r"^[/][/][ ]*").unwrap()),
         (TokenType::Newline, Regex::new(r"^[\n][ ]*").unwrap()),
         (TokenType::Print, Regex::new(r"^print[ ]*").unwrap()),
         (TokenType::Length, Regex::new(r"^len[ ]*").unwrap()),
+        (TokenType::Push, Regex::new(r"^push[ ]*").unwrap()),
+        (TokenType::Pop, Regex::new(r"^pop[ ]*").unwrap()),
+        (TokenType::Swap, Regex::new(r"^swap[ ]*").unwrap()),
         (TokenType::Import, Regex::new(r"^import[ ]*").unwrap()),
         (TokenType::Return, Regex::new(r"^return[ ]*").unwrap()),
         (TokenType::Comma, Regex::new(r"^[,][ ]*").unwrap()),

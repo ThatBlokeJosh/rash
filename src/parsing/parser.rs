@@ -116,6 +116,9 @@ impl Block {
 pub enum FunctionType {
     Print,
     Length,
+    Pop,
+    Swap,
+    Push,
     Defined,
     Nil,
 }
@@ -245,7 +248,7 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                 let expr = Expr::Literal(data);
                 tree.push(Box::new(expr));
             }
-            TokenType::Print | TokenType::Length => {
+            TokenType::Print | TokenType::Length | TokenType::Push | TokenType::Pop | TokenType::Swap => {
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_function(tokens[i..].to_vec(), "print".to_string());
@@ -650,6 +653,8 @@ pub fn parse_function(tokens: Vec<Token>, name: String) -> (Expr, usize) {
     match tokens[0].kind {
         TokenType::Print=>{function_kind = FunctionType::Print},
         TokenType::Length=>{function_kind = FunctionType::Length},
+        TokenType::Pop=>{function_kind = FunctionType::Pop},
+
         _ => {}, 
     }
     let mut func: Function = Function{kind: function_kind, arguments: Vec::new(), name};
