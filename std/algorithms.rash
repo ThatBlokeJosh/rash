@@ -20,3 +20,4 @@ fn binary_search(array, target) {
     r = len(array) - 1;
     return {binary_search_wrapper(array, 0, r, target)};
 }
+
