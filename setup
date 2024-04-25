@@ -1,0 +1,4 @@
+mkdir ~/.rash
+cp -r std ~/.rash/
+cargo build
+echo Your rash binary is located in target/debug

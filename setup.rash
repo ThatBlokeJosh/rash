@@ -1,0 +1,10 @@
+print("Making ~/.rash")
+c"mkdir ~/.rash"
+
+print("Copying the std into ~/.rash")
+c"cp -r std ~/.rash/"
+
+print("Building the binary...")
+c"cargo build"
+
+print("Your rash binary is located in target/debug/rash")

@@ -5,9 +5,11 @@ use std::io::prelude::*;
 use crate::parsing::lexer::{Token, tokenize};
 use crate::parsing::parser::{DataType, Definition, parse};
 use crate::runtime::runtime::run;
+use home::home_dir;
 
 pub fn std(functions: &mut HashMap<String, Definition>, name: &str) -> std::io::Result<()> {
-    let mut file = File::open(format!("std/{}.rash", name)).expect(format!("IMPORT NOT FOUND: Import {} wasn't found.", name).as_str());
+    let path = home_dir().unwrap().display().to_string();
+    let mut file = File::open(format!("{}/.rash/std/{}.rash", path, name)).expect(format!("IMPORT NOT FOUND: Import {} wasn't found.", name).as_str());
     let mut script = String::new();
     file.read_to_string(&mut script)?;
 

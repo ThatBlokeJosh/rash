@@ -16,6 +16,18 @@ url = "https://pokey.remington.boo" // Great website
 c"curl ${url}"
 ```
 
+# INSTALL 🏹
+```bash
+git clone https://github.com/ThatBlokeJosh/rash.git
+cd rash
+chmod +x setup
+./setup
+```
+Or you can use the provided rash script like so
+```bash 
+rash setup.rash
+```
+
 # TODO ✅
 - [x] Add types
 - [x] Add variables
