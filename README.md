@@ -16,7 +16,7 @@ url = "https://pokey.remington.boo" // Great website
 c"curl ${url}"
 ```
 
-# INSTALL 🏹
+# Install 🏹
 ```bash
 git clone https://github.com/ThatBlokeJosh/rash.git
 cd rash
