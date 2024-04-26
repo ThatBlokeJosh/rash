@@ -1,4 +1,3 @@
 fn b64(message) {
     return {c"echo -n ${message} | base64"};
 }
-

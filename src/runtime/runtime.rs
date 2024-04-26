@@ -103,6 +103,15 @@ pub fn run(tree: &Vec<Box<Expr>>, scopes: &mut Vec<HashMap<String, DataType>>, f
                     FunctionType::Swap => {
                         run_swap(&expr, scopes, functions);
                     }
+                    FunctionType::Int => {
+                        run_int(&expr, scopes, functions);
+                    }
+                    FunctionType::String => {
+                        run_string(&expr, scopes, functions);
+                    }
+                    FunctionType::Delete => {
+                        run_delete(&expr, scopes, functions);
+                    }
                     FunctionType::Defined => {
                         run_function(&mut expr, scopes, functions).expect("Error");
                     } 
@@ -174,6 +183,18 @@ pub fn calculate_bexpr(in_expr: &Expr, scopes: &mut Vec<HashMap<String, DataType
 
                 FunctionType::Swap => {
                     let output = run_swap(x, scopes, functions);
+                    return output;
+                }
+                FunctionType::Int => {
+                    let output = run_int(x, scopes, functions);
+                    return output;
+                }
+                FunctionType::String => {
+                    let output = run_string(x, scopes, functions);
+                    return output;
+                }
+                FunctionType::Delete => {
+                    let output = run_delete(x, scopes, functions);
                     return output;
                 }
                 _ => {return None;} 
@@ -300,7 +321,7 @@ pub fn shell_string(expr: &Block, scopes: &mut Vec<HashMap<String, DataType>>, p
             .output()
             .expect("failed to execute process")
     };
-    let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
+    let stdout_str = String::from_utf8_lossy(&output.stdout).to_string().trim().to_string();
     let stdout = DataType{value: stdout_str, kind: Literal::String, store: DataStore::new(None, None)};
     if print_out {
         print!("{}", stdout.value);

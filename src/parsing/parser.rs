@@ -119,6 +119,9 @@ pub enum FunctionType {
     Pop,
     Swap,
     Push,
+    Delete,
+    Int,
+    String,
     Defined,
     Nil,
 }
@@ -190,14 +193,14 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                 let expr: Expr;
                 (expr, j) = parse_string(tokens[i..].to_vec());
                 tree.push(Box::new(expr));
-                i += j;
+                i += j-1;
             }
             TokenType::CommandQuote | TokenType::FormattedQuote => {
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_fstring(tokens[i..].to_vec());
                 tree.push(Box::new(expr));
-                i += j;
+                i += j-1;
             }
             TokenType::Name | TokenType::Content => {
                 let j: usize;
@@ -248,7 +251,7 @@ pub fn parse_any(tokens: Vec<Token>, tree: &mut Vec<Box<Expr>>, conditions: bool
                 let expr = Expr::Literal(data);
                 tree.push(Box::new(expr));
             }
-            TokenType::Print | TokenType::Length | TokenType::Push | TokenType::Pop | TokenType::Swap => {
+            TokenType::Print | TokenType::Length | TokenType::Push | TokenType::Pop | TokenType::Swap | TokenType::Delete | TokenType::Int | TokenType::String => {
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_function(tokens[i..].to_vec(), "print".to_string());
@@ -396,7 +399,7 @@ pub fn parse_variable(tokens: Vec<Token>, name: String) -> (Expr, usize) {
                 let data = DataType{value, kind: Literal::Bool, store: DataStore::new(None, Some(b))};
                 expr = Expr::Literal(data);
             }
-            TokenType::Length | TokenType::Pop | TokenType::Push | TokenType::Swap => {
+            TokenType::Length | TokenType::Pop | TokenType::Push | TokenType::Swap | TokenType::Int | TokenType::String | TokenType::Delete => {
                 let j: usize;
                 (expr, j) = parse_function(tokens[i..].to_vec(), "length".to_string());
                 i += j;
@@ -479,7 +482,7 @@ pub fn parse_bin(tokens: Vec<Token>, left: Expr) -> (Expr, usize) {
                 bin.right = Box::new(Expr::Literal(data));
             }
 
-            TokenType::Length | TokenType::Pop | TokenType::Push | TokenType::Swap => {
+            TokenType::Length | TokenType::Pop | TokenType::Push | TokenType::Swap | TokenType::Int | TokenType::String | TokenType::Delete => {
                 let j: usize;
                 let expr: Expr;
                 (expr, j) = parse_function(tokens[i..].to_vec(), "length".to_string());
@@ -656,7 +659,9 @@ pub fn parse_function(tokens: Vec<Token>, name: String) -> (Expr, usize) {
         TokenType::Pop=>{function_kind = FunctionType::Pop},
         TokenType::Push=>{function_kind = FunctionType::Push},
         TokenType::Swap=>{function_kind = FunctionType::Swap},
-
+        TokenType::Delete=>{function_kind = FunctionType::Delete},
+        TokenType::Int=>{function_kind = FunctionType::Int},
+        TokenType::String=>{function_kind = FunctionType::String},
         _ => {}, 
     }
     let mut func: Function = Function{kind: function_kind, arguments: Vec::new(), name};
